@@ -1,6 +1,6 @@
-struct World {
-    tiles: Vec<Tile>,
-    entities: Vec<Entity>,
+pub struct World {
+    pub tiles: Vec<Tile>,
+    pub entities: Vec<Entity>,
 }
 
 impl World {
@@ -20,10 +20,10 @@ impl World {
     }
 }
 
-struct Tile {
+pub struct Tile {
     // Define properties for the Tile struct
 }
 
-struct Entity {
+pub struct Entity {
     // Define properties for the Entity struct
 }

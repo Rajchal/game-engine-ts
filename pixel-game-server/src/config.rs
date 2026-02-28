@@ -18,7 +18,20 @@ impl Config {
         let mut file = File::open(path)?;
         let mut contents = String::new();
         file.read_to_string(&mut contents)?;
-        let config: Config = toml::de::from_str(&contents)?;
+        let config: Config = toml::de::from_str(&contents)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
         Ok(config)
+    }
+}
+
+pub fn load_config() -> io::Result<Config> {
+    // Try to load from config.toml, fall back to defaults
+    match Config::load_from_file("config.toml") {
+        Ok(config) => Ok(config),
+        Err(_) => Ok(Config {
+            port: 8080,
+            max_players: 10,
+            game_name: "Dragon Speedrun".to_string(),
+        }),
     }
 }

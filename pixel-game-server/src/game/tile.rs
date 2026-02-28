@@ -1,4 +1,4 @@
-struct Tile {
+pub struct Tile {
     pub tile_type: TileType,
     pub walkable: bool,
 }

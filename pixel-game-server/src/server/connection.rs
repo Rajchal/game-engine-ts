@@ -1,4 +1,6 @@
-struct Connection {
+use std::io::{Read, Write};
+
+pub struct Connection {
     stream: std::net::TcpStream,
 }
 

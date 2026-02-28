@@ -1,6 +1,6 @@
-struct GameState {
-    active_players: Vec<Player>,
-    game_objects: Vec<GameObject>,
+pub struct GameState {
+    pub active_players: Vec<Player>,
+    pub game_objects: Vec<GameObject>,
 }
 
 impl GameState {
@@ -24,14 +24,13 @@ impl GameState {
     }
 }
 
-struct Player {
-    id: u32,
-    position: (f32, f32),
-    health: u32,
+pub struct Player {
+    pub id: u32,
+    pub position: (f32, f32),
+    pub health: u32,
 }
 
-struct GameObject {
-    id: u32,
-    position: (f32, f32),
-    // Other properties
+pub struct GameObject {
+    pub id: u32,
+    pub position: (f32, f32),
 }
