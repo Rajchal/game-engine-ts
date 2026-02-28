@@ -29,8 +29,8 @@ impl Default for GameConfig {
     fn default() -> Self {
         Self {
             port: 8080,
-            world_width: 100,
-            world_height: 100,
+            world_width: 200,
+            world_height: 200,
             tile_size: 16,
             viewport_width: 40,  // 640 / 16
             viewport_height: 22, // 360 / 16 ≈ 22
