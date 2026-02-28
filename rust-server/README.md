@@ -1,4 +1,4 @@
-# Pixel Game Server
+# Game Server
 
 ## Overview
 The Pixel Game Server is a multiplayer 2D pixel art game server built in Rust. It is designed to handle multiple player connections, manage game state, and facilitate communication between clients.
