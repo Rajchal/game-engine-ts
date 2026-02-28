@@ -19,6 +19,8 @@ pub struct GameConfig {
     pub dragon_hp: u32,
     /// Damage the dragon deals per hit.
     pub dragon_damage: u32,
+    /// Dragon footprint size in tiles (width = height).
+    pub dragon_size: u32,
     /// Damage the player deals with the Holy Sword.
     pub sword_damage: u32,
     /// Damage reduction when wearing Holy Armor.
@@ -37,6 +39,7 @@ impl Default for GameConfig {
             player_hp: 100,
             dragon_hp: 300,
             dragon_damage: 20,
+            dragon_size: 6,
             sword_damage: 50,
             armor_reduction: 10,
         }

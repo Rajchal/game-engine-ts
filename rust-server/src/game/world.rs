@@ -206,14 +206,37 @@ impl World {
     }
 
     /// Place the dragon on a walkable tile far from spawn (at least 40 tiles).
-    pub fn place_dragon<R: Rng + ?Sized>(&self, rng: &mut R) -> (i32, i32) {
+    pub fn place_dragon<R: Rng + ?Sized>(&self, rng: &mut R, size: u32) -> (i32, i32) {
         let spawn_x = self.width as i32 / 2;
         let spawn_y = self.height as i32 / 2;
+        let size_i = size as i32;
+
         loop {
-            let x = rng.gen_range(0..self.width as i32);
-            let y = rng.gen_range(0..self.height as i32);
-            let dist = (((x - spawn_x).pow(2) + (y - spawn_y).pow(2)) as f32).sqrt();
-            if self.is_walkable(x, y) && dist > 40.0 {
+            let max_x = self.width as i32 - size_i;
+            let max_y = self.height as i32 - size_i;
+            let x = rng.gen_range(0..=max_x);
+            let y = rng.gen_range(0..=max_y);
+
+            // Check footprint is fully walkable.
+            let mut all_walkable = true;
+            'outer: for dy in 0..size_i {
+                for dx in 0..size_i {
+                    if !self.is_walkable(x + dx, y + dy) {
+                        all_walkable = false;
+                        break 'outer;
+                    }
+                }
+            }
+            if !all_walkable {
+                continue;
+            }
+
+            // Keep dragon far from spawn (use center of footprint).
+            let center_x = x + size_i / 2;
+            let center_y = y + size_i / 2;
+            let dist = (((center_x - spawn_x).pow(2) + (center_y - spawn_y).pow(2)) as f32)
+                .sqrt();
+            if dist > 40.0 {
                 return (x, y);
             }
         }

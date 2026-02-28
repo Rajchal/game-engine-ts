@@ -71,6 +71,8 @@ pub enum ServerMessage {
         dragon_visible: bool,
         dragon_x: Option<i32>,
         dragon_y: Option<i32>,
+        dragon_width: Option<u32>,
+        dragon_height: Option<u32>,
         dragon_hp: Option<u32>,
     },
     /// Sent when a move is rejected (e.g. tile not walkable).
@@ -85,6 +87,8 @@ pub enum ServerMessage {
     DragonRevealed {
         x: i32,
         y: i32,
+        width: u32,
+        height: u32,
     },
     /// Result of attacking the dragon.
     AttackResult {

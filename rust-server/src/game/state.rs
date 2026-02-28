@@ -46,8 +46,15 @@ impl GameMatch {
         // Use a separate RNG stream for secret placement (items + dragon)
         let mut rng = Self::chacha_from_seed(seed.wrapping_add(1));
         let items = world.place_items(&mut rng);
-        let (dragon_x, dragon_y) = world.place_dragon(&mut rng);
-        let dragon = Dragon::new(dragon_x, dragon_y, config.dragon_hp, config.dragon_damage);
+        let (dragon_x, dragon_y) = world.place_dragon(&mut rng, config.dragon_size);
+        let dragon = Dragon::new(
+            dragon_x,
+            dragon_y,
+            config.dragon_size,
+            config.dragon_size,
+            config.dragon_hp,
+            config.dragon_damage,
+        );
 
         let spawns = world.get_spawn_positions();
         let p1 = Player::new(p1_id, p1_name, spawns[0].0, spawns[0].1, config.player_hp);
@@ -86,6 +93,11 @@ impl GameMatch {
         let new_y = player.y + dy;
 
         if !self.world.is_walkable(new_x, new_y) {
+            return false;
+        }
+
+        // Prevent walking onto the dragon footprint.
+        if self.dragon.contains(new_x, new_y) {
             return false;
         }
 
@@ -128,9 +140,30 @@ impl GameMatch {
             if !player.has_all_items() {
                 return None;
             }
-            let dist_x = (player.x - self.dragon.x).abs();
-            let dist_y = (player.y - self.dragon.y).abs();
-            if dist_x > 1 || dist_y > 1 {
+
+            // Compute Chebyshev distance from player to dragon footprint (6x6 by default).
+            let rect_x1 = self.dragon.x;
+            let rect_y1 = self.dragon.y;
+            let rect_x2 = self.dragon.x + self.dragon.width as i32 - 1;
+            let rect_y2 = self.dragon.y + self.dragon.height as i32 - 1;
+
+            let dx = if player.x < rect_x1 {
+                rect_x1 - player.x
+            } else if player.x > rect_x2 {
+                player.x - rect_x2
+            } else {
+                0
+            };
+
+            let dy = if player.y < rect_y1 {
+                rect_y1 - player.y
+            } else if player.y > rect_y2 {
+                player.y - rect_y2
+            } else {
+                0
+            };
+
+            if dx.max(dy) > 1 {
                 return None;
             }
         }

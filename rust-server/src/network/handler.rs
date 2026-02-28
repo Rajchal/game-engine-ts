@@ -36,6 +36,8 @@ pub fn process_message(
                                 ServerMessage::DragonRevealed {
                                     x: game.dragon.x,
                                     y: game.dragon.y,
+                                    width: game.dragon.width,
+                                    height: game.dragon.height,
                                 },
                             ));
                         }
@@ -101,6 +103,16 @@ pub fn build_state_update(game: &GameMatch, player_id: &str) -> Option<ServerMes
         },
         dragon_y: if dragon_visible {
             Some(game.dragon.y)
+        } else {
+            None
+        },
+        dragon_width: if dragon_visible {
+            Some(game.dragon.width)
+        } else {
+            None
+        },
+        dragon_height: if dragon_visible {
+            Some(game.dragon.height)
         } else {
             None
         },
