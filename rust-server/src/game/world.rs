@@ -241,6 +241,24 @@ impl World {
         }
     }
 
+    /// Serialize the tile grid to a compact string (one char per tile).
+    /// G=Grass, W=Water, L=Wall, F=Forest, S=Sand. Row-major order.
+    pub fn tiles_compact(&self) -> String {
+        let mut s = String::with_capacity((self.width * self.height) as usize);
+        for row in &self.tiles {
+            for tile in row {
+                s.push(match tile {
+                    TileType::Grass  => 'G',
+                    TileType::Water  => 'W',
+                    TileType::Wall   => 'L',
+                    TileType::Forest => 'F',
+                    TileType::Sand   => 'S',
+                });
+            }
+        }
+        s
+    }
+
     /// Spawn positions for the 2 players (near center, side by side).
     pub fn get_spawn_positions(&self) -> [(i32, i32); 2] {
         let cx = self.width as i32 / 2;

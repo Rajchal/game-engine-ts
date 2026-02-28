@@ -49,7 +49,7 @@ pub enum ServerMessage {
     },
     /// Waiting in lobby for a second player.
     WaitingForOpponent,
-    /// A match has been created. Client should generate the world from the seed.
+    /// A match has been created. Includes the full tile map.
     MatchStart {
         seed: u64,
         world_width: u32,
@@ -57,6 +57,8 @@ pub enum ServerMessage {
         spawn_x: i32,
         spawn_y: i32,
         opponent_name: String,
+        /// Compact tile string: G=Grass W=Water L=Wall F=Forest S=Sand, row-major.
+        tiles: String,
     },
     /// Periodic state update sent after every action.
     StateUpdate {

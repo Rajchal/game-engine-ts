@@ -52,6 +52,8 @@ pub async fn run_match(p1: WaitingPlayer, p2: WaitingPlayer, config: GameConfig)
 
     let spawns = game.world.get_spawn_positions();
 
+    let tiles = game.world.tiles_compact();
+
     // Tell both players the match is starting
     send_msg(
         &mut p1_tx,
@@ -62,6 +64,7 @@ pub async fn run_match(p1: WaitingPlayer, p2: WaitingPlayer, config: GameConfig)
             spawn_x: spawns[0].0,
             spawn_y: spawns[0].1,
             opponent_name: p2_name.clone(),
+            tiles: tiles.clone(),
         },
     )
     .await;
@@ -75,6 +78,7 @@ pub async fn run_match(p1: WaitingPlayer, p2: WaitingPlayer, config: GameConfig)
             spawn_x: spawns[1].0,
             spawn_y: spawns[1].1,
             opponent_name: p1_name.clone(),
+            tiles: tiles,
         },
     )
     .await;
