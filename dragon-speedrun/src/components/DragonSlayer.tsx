@@ -1,7 +1,6 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import Tile from "./Tile";
-
 import Character, { type Direction } from "./Character";
 import { generateWorld, isWalkable, type TileType } from "../utils/WorldGen";
 
@@ -9,7 +8,8 @@ import { generateWorld, isWalkable, type TileType } from "../utils/WorldGen";
 const MAP_WIDTH = 50;
 const MAP_HEIGHT = 50;
 const TILE_SIZE = 40;
-const STEP = TILE_SIZE;
+const SPEED = 4; // pixels per frame
+const SMOOTH = 0.15; // camera smoothing factor
 
 // Spawn position in tile coordinates
 const SPAWN_TILE_X = 25;
@@ -23,6 +23,8 @@ export default function DragonSlayer() {
 
   const CHAR_SCREEN_X = window.innerWidth / 2 - 25;
   const CHAR_SCREEN_Y = window.innerHeight / 2 - 25;
+
+  const keysPressed = useRef<{ [key: string]: boolean }>({});
 
   const [tiles] = useState<TileType[][]>(() => {
     const world = generateWorld(12345, MAP_WIDTH, MAP_HEIGHT);
@@ -41,11 +43,14 @@ export default function DragonSlayer() {
     return world;
   });
 
+  // ---------------- Camera ----------------
   const [mapOffset, setMapOffset] = useState({
     x: -SPAWN_TILE_X * TILE_SIZE + CHAR_SCREEN_X - TILE_SIZE / 2,
     y: -SPAWN_TILE_Y * TILE_SIZE + CHAR_SCREEN_Y - TILE_SIZE / 2,
   });
+  const mapTarget = useRef({ ...mapOffset });
 
+  // ---------------- Collision ----------------
   const isTileBlocked = (offset: { x: number; y: number }) => {
     const worldX = -offset.x + CHAR_SCREEN_X + 25;
     const worldY = -offset.y + CHAR_SCREEN_Y + 25;
@@ -56,53 +61,73 @@ export default function DragonSlayer() {
     return !isWalkable(tiles[tileY][tileX]);
   };
 
-  const moveMap = useCallback(
-    (dir: Direction) => {
-      setDirection(dir);
-      const newOffset = { ...mapOffset };
-      switch (dir) {
-        case "up":
-          newOffset.y += STEP;
-          break;
-        case "down":
-          newOffset.y -= STEP;
-          break;
-        case "left":
-          newOffset.x += STEP;
-          break;
-        case "right":
-          newOffset.x -= STEP;
-          break;
-      }
-      if (!isTileBlocked(newOffset)) {
-        setMapOffset(newOffset);
-        setFrameIndex((prev) => (prev + 1) % 3);
-      }
-    },
-    [mapOffset, tiles, isTileBlocked],
-  );
-
+  // ---------------- Key Tracking ----------------
   useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      switch (e.key) {
-        case "ArrowUp":
-          moveMap("up");
-          break;
-        case "ArrowDown":
-          moveMap("down");
-          break;
-        case "ArrowLeft":
-          moveMap("left");
-          break;
-        case "ArrowRight":
-          moveMap("right");
-          break;
-      }
+    const down = (e: KeyboardEvent) => {
+      keysPressed.current[e.key] = true;
     };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [moveMap]);
+    const up = (e: KeyboardEvent) => {
+      keysPressed.current[e.key] = false;
+    };
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+    };
+  }, []);
 
+  // ---------------- Smooth Movement Loop ----------------
+  useEffect(() => {
+    let animationFrameId: number;
+
+    const update = () => {
+      let moved = false;
+      let newTarget = { ...mapTarget.current };
+
+      // Handle movement input
+      if (keysPressed.current["ArrowUp"]) {
+        setDirection("up");
+        newTarget.y += SPEED;
+        moved = true;
+      }
+      if (keysPressed.current["ArrowDown"]) {
+        setDirection("down");
+        newTarget.y -= SPEED;
+        moved = true;
+      }
+      if (keysPressed.current["ArrowLeft"]) {
+        setDirection("left");
+        newTarget.x += SPEED;
+        moved = true;
+      }
+      if (keysPressed.current["ArrowRight"]) {
+        setDirection("right");
+        newTarget.x -= SPEED;
+        moved = true;
+      }
+
+      // Update target if valid
+      if (moved && !isTileBlocked(newTarget)) {
+        mapTarget.current = newTarget;
+        setFrameIndex((prev) => (prev + 1) % 3); // animate character
+      }
+
+      // Smoothly interpolate mapOffset toward target
+      const lerpOffset = {
+        x: mapOffset.x + (mapTarget.current.x - mapOffset.x) * SMOOTH,
+        y: mapOffset.y + (mapTarget.current.y - mapOffset.y) * SMOOTH,
+      };
+      setMapOffset(lerpOffset);
+
+      animationFrameId = requestAnimationFrame(update);
+    };
+
+    animationFrameId = requestAnimationFrame(update);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [mapOffset, tiles]);
+
+  // ---------------- Render ----------------
   return (
     <div
       style={{
@@ -114,7 +139,6 @@ export default function DragonSlayer() {
       }}
     >
       {/* Map border */}
-      {/* Dynamic CSS Border */}
       <div
         style={{
           position: "absolute",
@@ -139,7 +163,6 @@ export default function DragonSlayer() {
             borderBottom: "6px solid #333",
           }}
         />
-
         {/* BOTTOM - Wooden Spikes */}
         <div
           style={{
@@ -154,7 +177,6 @@ export default function DragonSlayer() {
               "polygon(0% 100%, 5% 0%, 10% 100%, 15% 0%, 20% 100%, 25% 0%, 30% 100%, 35% 0%, 40% 100%, 45% 0%, 50% 100%, 55% 0%, 60% 100%, 65% 0%, 70% 100%, 75% 0%, 80% 100%, 85% 0%, 90% 100%, 95% 0%, 100% 100%)",
           }}
         />
-
         {/* LEFT - Cliff Rock */}
         <div
           style={{
@@ -168,7 +190,6 @@ export default function DragonSlayer() {
             borderRight: "6px solid #222",
           }}
         />
-
         {/* RIGHT - Dark Forest Edge */}
         <div
           style={{
@@ -203,7 +224,7 @@ export default function DragonSlayer() {
               top={y * TILE_SIZE}
               left={x * TILE_SIZE}
             />
-          )),
+          ))
         )}
       </div>
 
