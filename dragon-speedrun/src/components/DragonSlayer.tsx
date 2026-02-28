@@ -1,133 +1,184 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Tile from "./Tile";
 import Character, { type Direction } from "./Character";
-import { generateWorld, isWalkable, type TileType } from "../utils/WorldGen";
+import { generateWorld, type TileType } from "../utils/WorldGen";
+import { gameWS } from "../utils/websocket";
+
+type ServerMessage =
+  | { type: "Welcome"; player_id: string }
+  | { type: "WaitingForOpponent" }
+  | {
+    type: "MatchStart";
+    seed: number;
+    world_width: number;
+    world_height: number;
+    spawn_x: number;
+    spawn_y: number;
+    opponent_name: string;
+  }
+  | {
+    type: "StateUpdate";
+    your_x: number;
+    your_y: number;
+    your_hp: number;
+    your_inventory: string[];
+    opponent_x: number;
+    opponent_y: number;
+    opponent_hp: number;
+    opponent_item_count: number;
+    dragon_visible: boolean;
+    dragon_x: number | null;
+    dragon_y: number | null;
+    dragon_width: number | null;
+    dragon_height: number | null;
+    dragon_hp: number | null;
+  }
+  | { type: "ItemPickedUp"; item: string }
+  | { type: "DragonRevealed"; x: number; y: number; width: number; height: number }
+  | { type: "AttackResult"; damage_dealt: number; damage_taken: number; your_hp: number; dragon_hp: number }
+  | { type: "MoveDenied"; reason: string }
+  | { type: "MatchEnd"; winner: string }
+  | { type: "OpponentDisconnected" }
+  | { type: "Error"; message: string };
 
 // ---------------- Constants ----------------
-const MAP_WIDTH = 50;
-const MAP_HEIGHT = 50;
 const TILE_SIZE = 40;
-const SPEED = 4; // pixels per frame
-const SMOOTH = 0.15; // camera smoothing factor
+const CHAR_SIZE = 50; // matches Character sprite sizing used before
+const VIEW_PADDING = 2; // tiles beyond viewport
 
-// Spawn position in tile coordinates
-const SPAWN_TILE_X = 25;
-const SPAWN_TILE_Y = 25;
-const SPAWN_RADIUS = 3;
-
-// ---------------- Main Component ----------------
 export default function DragonSlayer() {
   const [direction, setDirection] = useState<Direction>("down");
   const [frameIndex, setFrameIndex] = useState(0);
+  const [world, setWorld] = useState<TileType[][] | null>(null);
+  const [playerPos, setPlayerPos] = useState({ x: 0, y: 0 });
+  const [dragonRect, setDragonRect] = useState<
+    { x: number; y: number; width: number; height: number } | null
+  >(null);
 
-  const CHAR_SCREEN_X = window.innerWidth / 2 - 25;
-  const CHAR_SCREEN_Y = window.innerHeight / 2 - 25;
-
-  const keysPressed = useRef<{ [key: string]: boolean }>({});
-
-  const [tiles] = useState<TileType[][]>(() => {
-    const world = generateWorld(12345, MAP_WIDTH, MAP_HEIGHT);
-
-    // Clear spawn area
-    for (let dy = -SPAWN_RADIUS; dy <= SPAWN_RADIUS; dy++) {
-      for (let dx = -SPAWN_RADIUS; dx <= SPAWN_RADIUS; dx++) {
-        const nx = SPAWN_TILE_X + dx;
-        const ny = SPAWN_TILE_Y + dy;
-        if (nx >= 0 && nx < MAP_WIDTH && ny >= 0 && ny < MAP_HEIGHT) {
-          world[ny][nx] = "Grass";
-        }
-      }
-    }
-
-    return world;
+  const [viewport, setViewport] = useState({
+    width: typeof window !== "undefined" ? window.innerWidth : 1280,
+    height: typeof window !== "undefined" ? window.innerHeight : 720,
   });
+  const [mapOffset, setMapOffset] = useState({ x: 0, y: 0 });
+  const mapRef = useRef<HTMLDivElement | null>(null);
 
-  // ---------------- Camera ----------------
-  const [mapOffset, setMapOffset] = useState({
-    x: -SPAWN_TILE_X * TILE_SIZE + CHAR_SCREEN_X - TILE_SIZE / 2,
-    y: -SPAWN_TILE_Y * TILE_SIZE + CHAR_SCREEN_Y - TILE_SIZE / 2,
-  });
-  const mapTarget = useRef({ ...mapOffset });
+  const CHAR_SCREEN_X = useMemo(
+    () => viewport.width / 2 - CHAR_SIZE / 2,
+    [viewport.width]
+  );
+  const CHAR_SCREEN_Y = useMemo(
+    () => viewport.height / 2 - CHAR_SIZE / 2,
+    [viewport.height]
+  );
 
-  // ---------------- Collision ----------------
-  const isTileBlocked = (offset: { x: number; y: number }) => {
-    const worldX = -offset.x + CHAR_SCREEN_X + 25;
-    const worldY = -offset.y + CHAR_SCREEN_Y + 25;
-    const tileX = Math.floor(worldX / TILE_SIZE);
-    const tileY = Math.floor(worldY / TILE_SIZE);
-    if (tileX < 0 || tileX >= MAP_WIDTH || tileY < 0 || tileY >= MAP_HEIGHT)
-      return true;
-    return !isWalkable(tiles[tileY][tileX]);
-  };
-
-  // ---------------- Key Tracking ----------------
+  // Track viewport size to support tile culling
   useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      keysPressed.current[e.key] = true;
+    const onResize = () => {
+      setViewport({ width: window.innerWidth, height: window.innerHeight });
     };
-    const up = (e: KeyboardEvent) => {
-      keysPressed.current[e.key] = false;
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  // --- Camera follow (discrete; avoid per-frame re-render)
+  useEffect(() => {
+    const next = {
+      x: -playerPos.x * TILE_SIZE + CHAR_SCREEN_X - TILE_SIZE / 2,
+      y: -playerPos.y * TILE_SIZE + CHAR_SCREEN_Y - TILE_SIZE / 2,
     };
-    window.addEventListener("keydown", down);
-    window.addEventListener("keyup", up);
+    setMapOffset(next);
+    if (mapRef.current) {
+      mapRef.current.style.transform = `translate(${next.x}px, ${next.y}px)`;
+    }
+  }, [playerPos, CHAR_SCREEN_X, CHAR_SCREEN_Y]);
+
+  // --- Input: send to server
+  useEffect(() => {
+    const sendMove = (dir: Direction) => {
+      setDirection(dir);
+      setFrameIndex((p) => (p + 1) % 3);
+      gameWS.send({ type: "Move", direction: capitalize(dir) });
+    };
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "ArrowUp") sendMove("up");
+      else if (e.key === "ArrowDown") sendMove("down");
+      else if (e.key === "ArrowLeft") sendMove("left");
+      else if (e.key === "ArrowRight") sendMove("right");
+      else if (e.key === " ") gameWS.send({ type: "Attack" });
+    };
+
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  // --- WebSocket setup
+  useEffect(() => {
+    const listener = (msg: ServerMessage) => {
+      switch (msg.type) {
+        case "MatchStart": {
+          const w = generateWorld(msg.seed, msg.world_width, msg.world_height);
+          setWorld(w);
+          setPlayerPos({ x: msg.spawn_x, y: msg.spawn_y });
+          break;
+        }
+        case "StateUpdate": {
+          setPlayerPos({ x: msg.your_x, y: msg.your_y });
+          if (msg.dragon_visible && msg.dragon_x !== null && msg.dragon_y !== null) {
+            setDragonRect({
+              x: msg.dragon_x,
+              y: msg.dragon_y,
+              width: msg.dragon_width ?? 1,
+              height: msg.dragon_height ?? 1,
+            });
+          }
+          break;
+        }
+        case "DragonRevealed": {
+          setDragonRect({
+            x: msg.x,
+            y: msg.y,
+            width: msg.width,
+            height: msg.height,
+          });
+          break;
+        }
+        default:
+          break;
+      }
+    };
+
+    gameWS.onMessage(listener as any);
+    // Send initial join
+    gameWS.send({ type: "Join", player_name: "Alice" });
+
     return () => {
-      window.removeEventListener("keydown", down);
-      window.removeEventListener("keyup", up);
+      // no unsubscribe support in gameWS; relying on component unmount
     };
   }, []);
 
-  // ---------------- Smooth Movement Loop ----------------
-  useEffect(() => {
-    let animationFrameId: number;
+  if (!world) {
+    return <div style={{ color: "white", padding: 16 }}>Waiting for match...</div>;
+  }
 
-    const update = () => {
-      let moved = false;
-      let newTarget = { ...mapTarget.current };
+  // Viewport culling: only render tiles near the camera
+  const tilesWide = Math.ceil(viewport.width / TILE_SIZE) + VIEW_PADDING * 2;
+  const tilesHigh = Math.ceil(viewport.height / TILE_SIZE) + VIEW_PADDING * 2;
 
-      // Handle movement input
-      if (keysPressed.current["ArrowUp"]) {
-        setDirection("up");
-        newTarget.y += SPEED;
-        moved = true;
-      }
-      if (keysPressed.current["ArrowDown"]) {
-        setDirection("down");
-        newTarget.y -= SPEED;
-        moved = true;
-      }
-      if (keysPressed.current["ArrowLeft"]) {
-        setDirection("left");
-        newTarget.x += SPEED;
-        moved = true;
-      }
-      if (keysPressed.current["ArrowRight"]) {
-        setDirection("right");
-        newTarget.x -= SPEED;
-        moved = true;
-      }
+  const startX = clamp(
+    Math.floor(playerPos.x - tilesWide / 2),
+    0,
+    world[0].length - 1
+  );
+  const startY = clamp(
+    Math.floor(playerPos.y - tilesHigh / 2),
+    0,
+    world.length - 1
+  );
+  const endX = clamp(startX + tilesWide, 0, world[0].length);
+  const endY = clamp(startY + tilesHigh, 0, world.length);
 
-      // Update target if valid
-      if (moved && !isTileBlocked(newTarget)) {
-        mapTarget.current = newTarget;
-        setFrameIndex((prev) => (prev + 1) % 3); // animate character
-      }
-
-      // Smoothly interpolate mapOffset toward target
-      const lerpOffset = {
-        x: mapOffset.x + (mapTarget.current.x - mapOffset.x) * SMOOTH,
-        y: mapOffset.y + (mapTarget.current.y - mapOffset.y) * SMOOTH,
-      };
-      setMapOffset(lerpOffset);
-
-      animationFrameId = requestAnimationFrame(update);
-    };
-
-    animationFrameId = requestAnimationFrame(update);
-    return () => cancelAnimationFrame(animationFrameId);
-  }, [mapOffset, tiles]);
-
-  // ---------------- Render ----------------
   return (
     <div
       style={{
@@ -138,93 +189,46 @@ export default function DragonSlayer() {
         backgroundColor: "black",
       }}
     >
-      {/* Map border */}
+      {/* Map tiles */}
       <div
+        ref={mapRef}
         style={{
           position: "absolute",
-          top: mapOffset.y,
-          left: mapOffset.x,
-          width: MAP_WIDTH * TILE_SIZE,
-          height: MAP_HEIGHT * TILE_SIZE,
-          pointerEvents: "none",
-          zIndex: 5,
+          width: world[0].length * TILE_SIZE,
+          height: world.length * TILE_SIZE,
+          transform: `translate(${mapOffset.x}px, ${mapOffset.y}px)`,
+          willChange: "transform",
         }}
       >
-        {/* TOP - Castle Wall */}
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: 60,
-            background:
-              "repeating-linear-gradient(90deg, #555 0px, #555 40px, #666 40px, #666 80px)",
-            borderBottom: "6px solid #333",
-          }}
-        />
-        {/* BOTTOM - Wooden Spikes */}
-        <div
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            width: "100%",
-            height: 70,
-            background:
-              "repeating-linear-gradient(90deg, #8B4513 0px, #8B4513 20px, #A0522D 20px, #A0522D 40px)",
-            clipPath:
-              "polygon(0% 100%, 5% 0%, 10% 100%, 15% 0%, 20% 100%, 25% 0%, 30% 100%, 35% 0%, 40% 100%, 45% 0%, 50% 100%, 55% 0%, 60% 100%, 65% 0%, 70% 100%, 75% 0%, 80% 100%, 85% 0%, 90% 100%, 95% 0%, 100% 100%)",
-          }}
-        />
-        {/* LEFT - Cliff Rock */}
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: 60,
-            height: "100%",
-            background:
-              "repeating-linear-gradient(180deg, #3a3a3a 0px, #3a3a3a 30px, #4a4a4a 30px, #4a4a4a 60px)",
-            borderRight: "6px solid #222",
-          }}
-        />
-        {/* RIGHT - Dark Forest Edge */}
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            right: 0,
-            width: 60,
-            height: "100%",
-            background:
-              "repeating-linear-gradient(180deg, #0f3d0f 0px, #0f3d0f 40px, #145214 40px, #145214 80px)",
-            borderLeft: "6px solid #081f08",
-          }}
-        />
-      </div>
+        {world.slice(startY, endY).map((row, yIdx) => {
+          const y = startY + yIdx;
+          return row.slice(startX, endX).map((tile, xIdx) => {
+            const x = startX + xIdx;
+            return (
+              <Tile
+                key={`${x}-${y}`}
+                type={tile}
+                size={TILE_SIZE}
+                top={y * TILE_SIZE}
+                left={x * TILE_SIZE}
+              />
+            );
+          });
+        })}
 
-      {/* Map tiles and objects */}
-      <div
-        style={{
-          position: "absolute",
-          top: mapOffset.y,
-          left: mapOffset.x,
-          width: MAP_WIDTH * TILE_SIZE,
-          height: MAP_HEIGHT * TILE_SIZE,
-        }}
-      >
-        {tiles.map((row, y) =>
-          row.map((tile, x) => (
-            <Tile
-              key={`${x}-${y}`}
-              type={tile}
-              size={TILE_SIZE}
-              top={y * TILE_SIZE}
-              left={x * TILE_SIZE}
-            />
-          ))
+        {dragonRect && (
+          <div
+            style={{
+              position: "absolute",
+              left: dragonRect.x * TILE_SIZE,
+              top: dragonRect.y * TILE_SIZE,
+              width: dragonRect.width * TILE_SIZE,
+              height: dragonRect.height * TILE_SIZE,
+              background: "rgba(200,0,0,0.25)",
+              border: "2px solid rgba(255,0,0,0.7)",
+              pointerEvents: "none",
+            }}
+          />
         )}
       </div>
 
@@ -237,4 +241,21 @@ export default function DragonSlayer() {
       />
     </div>
   );
+}
+
+function capitalize(dir: Direction): "Up" | "Down" | "Left" | "Right" {
+  switch (dir) {
+    case "up":
+      return "Up";
+    case "down":
+      return "Down";
+    case "left":
+      return "Left";
+    case "right":
+      return "Right";
+  }
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
 }
