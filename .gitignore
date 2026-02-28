@@ -12,5 +12,5 @@ Cargo.lock
 
 # Debug files
 *.pdb
-target/".env" 
+target/
 ".env" 
