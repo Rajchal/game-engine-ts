@@ -173,13 +173,9 @@ impl GameMatch {
             };
         } else if !player_alive {
             // Player died to the dragon — opponent wins
-            let opponent_id = self
-                .get_opponent(player_id)
-                .map(|p| p.id.clone());
+            let opponent_id = self.get_opponent(player_id).map(|p| p.id.clone());
             if let Some(opp_id) = opponent_id {
-                self.status = MatchStatus::Finished {
-                    winner_id: opp_id,
-                };
+                self.status = MatchStatus::Finished { winner_id: opp_id };
             }
         }
 
