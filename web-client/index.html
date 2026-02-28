@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dragon Speedrun Client</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Dragon Speedrun Client</h1>
+      <div class="connect-row">
+        <label>
+          Server URL
+          <input id="ws-url" type="text" value="ws://155.248.241.165:8080" />
+        </label>
+        <label>
+          Name
+          <input id="player-name" type="text" value="Alice" />
+        </label>
+        <button id="connect">Connect</button>
+        <span id="status" class="status">Disconnected</span>
+      </div>
+    </header>
+
+    <main>
+      <section class="left">
+        <canvas id="map" width="800" height="600"></canvas>
+        <div class="controls">
+          <button data-move="Up">▲</button>
+          <div class="mid-row">
+            <button data-move="Left">◀</button>
+            <button data-action="Attack">⚔</button>
+            <button data-move="Right">▶</button>
+          </div>
+          <button data-move="Down">▼</button>
+        </div>
+        <div class="legend">
+          <span class="chip grass">Grass</span>
+          <span class="chip water">Water</span>
+          <span class="chip wall">Wall</span>
+          <span class="chip forest">Forest</span>
+          <span class="chip dragon">Dragon</span>
+          <span class="chip you">You</span>
+          <span class="chip opponent">Opponent</span>
+        </div>
+      </section>
+
+      <section class="right">
+        <div class="panel">
+          <h3>State</h3>
+          <div class="state-grid" id="state-grid"></div>
+        </div>
+        <div class="panel">
+          <h3>Log</h3>
+          <div id="log" class="log"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>
