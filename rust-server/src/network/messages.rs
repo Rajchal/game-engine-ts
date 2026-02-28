@@ -44,9 +44,7 @@ impl Direction {
 #[serde(tag = "type")]
 pub enum ServerMessage {
     /// Sent after a client sends Join.
-    Welcome {
-        player_id: String,
-    },
+    Welcome { player_id: String },
     /// Waiting in lobby for a second player.
     WaitingForOpponent,
     /// A match has been created. Includes the full tile map.
@@ -78,13 +76,9 @@ pub enum ServerMessage {
         dragon_hp: Option<u32>,
     },
     /// Sent when a move is rejected (e.g. tile not walkable).
-    MoveDenied {
-        reason: String,
-    },
+    MoveDenied { reason: String },
     /// Player picked up a holy item.
-    ItemPickedUp {
-        item: Item,
-    },
+    ItemPickedUp { item: Item },
     /// All 3 items collected — dragon location revealed!
     DragonRevealed {
         x: i32,
@@ -100,13 +94,9 @@ pub enum ServerMessage {
         dragon_hp: u32,
     },
     /// The match is over.
-    MatchEnd {
-        winner: String,
-    },
+    MatchEnd { winner: String },
     /// The other player disconnected.
     OpponentDisconnected,
     /// Generic error.
-    Error {
-        message: String,
-    },
+    Error { message: String },
 }

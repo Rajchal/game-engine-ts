@@ -248,11 +248,11 @@ impl World {
         for row in &self.tiles {
             for tile in row {
                 s.push(match tile {
-                    TileType::Grass  => 'G',
-                    TileType::Water  => 'W',
-                    TileType::Wall   => 'L',
+                    TileType::Grass => 'G',
+                    TileType::Water => 'W',
+                    TileType::Wall => 'L',
                     TileType::Forest => 'F',
-                    TileType::Sand   => 'S',
+                    TileType::Sand => 'S',
                 });
             }
         }
