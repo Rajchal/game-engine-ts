@@ -39,304 +39,304 @@ interface ServerStateUpdate {
     opponent_x: number;
     opponent_y: number;
     import {
-        ATTACK_COOLDOWN_MS,
-        Dir,
-        MOVE_REPEAT_MS,
-        TileType,
-        TILE_CHAR,
-        WORLD_HEIGHT,
-        WORLD_WIDTH,
-    } from "./constants";
-    import { draw, resizeCanvases } from "./render";
-    import { loadSprites, spriteSheets } from "./sprites";
-    import { applyLocalMove, applyStateUpdate, gameState, resetForMatch, setWorld, tickState } from "./state";
-    import { Controls, ServerMessage } from "./types";
+    ATTACK_COOLDOWN_MS,
+    Dir,
+    MOVE_REPEAT_MS,
+    TileType,
+    TILE_CHAR,
+    WORLD_HEIGHT,
+    WORLD_WIDTH,
+} from "./constants";
+import { draw, resizeCanvases } from "./render";
+import { loadSprites, spriteSheets } from "./sprites";
+import { applyLocalMove, applyStateUpdate, gameState, resetForMatch, setWorld, tickState } from "./state";
+import { Controls, ServerMessage } from "./types";
 
-    const controls: Controls = {
-        urlInput: document.getElementById("ws-url") as HTMLInputElement,
-        nameInput: document.getElementById("player-name") as HTMLInputElement,
-        connectBtn: document.getElementById("connect") as HTMLButtonElement,
-        status: document.getElementById("status")!,
-        overlay: document.getElementById("connect-overlay")!,
-        canvas: document.getElementById("map") as HTMLCanvasElement,
-        minimap: document.getElementById("minimap") as HTMLCanvasElement,
-        stateGrid: document.getElementById("state-grid")!,
-    };
+const controls: Controls = {
+    urlInput: document.getElementById("ws-url") as HTMLInputElement,
+    nameInput: document.getElementById("player-name") as HTMLInputElement,
+    connectBtn: document.getElementById("connect") as HTMLButtonElement,
+    status: document.getElementById("status")!,
+    overlay: document.getElementById("connect-overlay")!,
+    canvas: document.getElementById("map") as HTMLCanvasElement,
+    minimap: document.getElementById("minimap") as HTMLCanvasElement,
+    stateGrid: document.getElementById("state-grid")!,
+};
 
-    let ws: WebSocket | null = null;
-    let playerId: string | null = null;
-    let lastAttackAt = 0;
-    let activeMoveDirection: Dir | null = null;
-    let moveRepeatTimer: number | null = null;
-    let isQueueing = false;
-    let lastFrame = performance.now();
+let ws: WebSocket | null = null;
+let playerId: string | null = null;
+let lastAttackAt = 0;
+let activeMoveDirection: Dir | null = null;
+let moveRepeatTimer: number | null = null;
+let isQueueing = false;
+let lastFrame = performance.now();
 
-    function bootstrap() {
+function bootstrap() {
+    resizeCanvases(controls);
+    window.addEventListener("resize", () => {
         resizeCanvases(controls);
-        window.addEventListener("resize", () => {
-            resizeCanvases(controls);
-            draw(controls, spriteSheets);
-        });
-
-        controls.connectBtn.addEventListener("click", doConnect);
-        wireInput();
-        loadSprites(() => draw(controls, spriteSheets));
-        showOverlay();
-        updateStatePanel();
-        requestAnimationFrame(loop);
-    }
-
-    function wireInput() {
-        Array.from(document.querySelectorAll("[data-move]")).forEach(btn => {
-            btn.addEventListener("click", () => {
-                const dir = (btn as HTMLElement).dataset.move as Dir;
-                if (dir) startMoveLoop(dir);
-            });
-        });
-        Array.from(document.querySelectorAll("[data-action='Attack']")).forEach(btn => {
-            btn.addEventListener("click", sendAttack);
-        });
-        window.addEventListener("keydown", e => {
-            const direction = keyToDirection(e.key);
-            if (direction) {
-                e.preventDefault();
-                startMoveLoop(direction);
-                return;
-            }
-            if (e.key === " ") {
-                e.preventDefault();
-                sendAttack();
-            }
-        });
-        window.addEventListener("keyup", e => {
-            const direction = keyToDirection(e.key);
-            if (direction) {
-                e.preventDefault();
-                stopMoveLoop(direction);
-            }
-        });
-        window.addEventListener("blur", () => {
-            stopMoveLoopAll();
-        });
-    }
-
-    function loop(now: number) {
-        const dt = now - lastFrame;
-        lastFrame = now;
-        tickState(dt);
         draw(controls, spriteSheets);
-        requestAnimationFrame(loop);
-    }
+    });
 
-    function doConnect() {
-        if (isQueueing) return;
-        const url = controls.urlInput.value.trim();
-        const name = controls.nameInput.value.trim() || "Player";
-        isQueueing = true;
-        controls.connectBtn.disabled = true;
-        controls.connectBtn.textContent = "Joining...";
-        if (ws) ws.close();
+    controls.connectBtn.addEventListener("click", doConnect);
+    wireInput();
+    loadSprites(() => draw(controls, spriteSheets));
+    showOverlay();
+    updateStatePanel();
+    requestAnimationFrame(loop);
+}
+
+function wireInput() {
+    Array.from(document.querySelectorAll("[data-move]")).forEach(btn => {
+        btn.addEventListener("click", () => {
+            const dir = (btn as HTMLElement).dataset.move as Dir;
+            if (dir) startMoveLoop(dir);
+        });
+    });
+    Array.from(document.querySelectorAll("[data-action='Attack']")).forEach(btn => {
+        btn.addEventListener("click", sendAttack);
+    });
+    window.addEventListener("keydown", e => {
+        const direction = keyToDirection(e.key);
+        if (direction) {
+            e.preventDefault();
+            startMoveLoop(direction);
+            return;
+        }
+        if (e.key === " ") {
+            e.preventDefault();
+            sendAttack();
+        }
+    });
+    window.addEventListener("keyup", e => {
+        const direction = keyToDirection(e.key);
+        if (direction) {
+            e.preventDefault();
+            stopMoveLoop(direction);
+        }
+    });
+    window.addEventListener("blur", () => {
+        stopMoveLoopAll();
+    });
+}
+
+function loop(now: number) {
+    const dt = now - lastFrame;
+    lastFrame = now;
+    tickState(dt);
+    draw(controls, spriteSheets);
+    requestAnimationFrame(loop);
+}
+
+function doConnect() {
+    if (isQueueing) return;
+    const url = controls.urlInput.value.trim();
+    const name = controls.nameInput.value.trim() || "Player";
+    isQueueing = true;
+    controls.connectBtn.disabled = true;
+    controls.connectBtn.textContent = "Joining...";
+    if (ws) ws.close();
+    showOverlay();
+    ws = new WebSocket(url);
+    controls.status.textContent = "Connecting…";
+
+    ws.onopen = () => {
+        controls.status.textContent = "Connected";
         showOverlay();
-        ws = new WebSocket(url);
-        controls.status.textContent = "Connecting…";
+        ws?.send(JSON.stringify({ type: "Join", player_name: name }));
+    };
+    ws.onclose = () => {
+        controls.status.textContent = "Disconnected";
+        resetQueueUi();
+        showOverlay();
+    };
+    ws.onerror = () => {
+        controls.status.textContent = "Error";
+        resetQueueUi();
+        showOverlay();
+    };
+    ws.onmessage = ev => {
+        let m: ServerMessage;
+        try {
+            m = JSON.parse(ev.data) as ServerMessage;
+        } catch (err) {
+            console.error(err);
+            return;
+        }
+        onMsg(m);
+    };
+}
 
-        ws.onopen = () => {
+function sendMove(direction: Dir) {
+    if (ws?.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: "Move", direction }));
+        applyLocalMove(direction);
+    }
+}
+
+function startMoveLoop(direction: Dir) {
+    if (activeMoveDirection === direction && moveRepeatTimer != null) return;
+    activeMoveDirection = direction;
+    if (moveRepeatTimer != null) window.clearInterval(moveRepeatTimer);
+    sendMove(direction);
+    moveRepeatTimer = window.setInterval(() => {
+        if (!activeMoveDirection) return;
+        sendMove(activeMoveDirection);
+    }, MOVE_REPEAT_MS);
+}
+
+function stopMoveLoop(direction: Dir) {
+    if (activeMoveDirection !== direction) return;
+    activeMoveDirection = null;
+    if (moveRepeatTimer != null) {
+        window.clearInterval(moveRepeatTimer);
+        moveRepeatTimer = null;
+    }
+}
+
+function stopMoveLoopAll() {
+    activeMoveDirection = null;
+    if (moveRepeatTimer != null) {
+        window.clearInterval(moveRepeatTimer);
+        moveRepeatTimer = null;
+    }
+}
+
+function sendAttack() {
+    const now = performance.now();
+    if (now - lastAttackAt < ATTACK_COOLDOWN_MS) return;
+    lastAttackAt = now;
+    if (ws?.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: "Attack" }));
+    }
+}
+
+function onMsg(m: ServerMessage) {
+    switch (m.type) {
+        case "Welcome":
+            playerId = m.player_id;
             controls.status.textContent = "Connected";
             showOverlay();
-            ws?.send(JSON.stringify({ type: "Join", player_name: name }));
-        };
-        ws.onclose = () => {
-            controls.status.textContent = "Disconnected";
-            resetQueueUi();
+            break;
+        case "WaitingForOpponent":
+            controls.status.textContent = "Waiting for opponent…";
             showOverlay();
-        };
-        ws.onerror = () => {
-            controls.status.textContent = "Error";
+            break;
+        case "MatchStart": {
             resetQueueUi();
-            showOverlay();
-        };
-        ws.onmessage = ev => {
-            let m: ServerMessage;
+            controls.status.textContent = "In match";
             try {
-                m = JSON.parse(ev.data) as ServerMessage;
-            } catch (err) {
-                console.error(err);
-                return;
-            }
-            onMsg(m);
-        };
-    }
-
-    function sendMove(direction: Dir) {
-        if (ws?.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: "Move", direction }));
-            applyLocalMove(direction);
-        }
-    }
-
-    function startMoveLoop(direction: Dir) {
-        if (activeMoveDirection === direction && moveRepeatTimer != null) return;
-        activeMoveDirection = direction;
-        if (moveRepeatTimer != null) window.clearInterval(moveRepeatTimer);
-        sendMove(direction);
-        moveRepeatTimer = window.setInterval(() => {
-            if (!activeMoveDirection) return;
-            sendMove(activeMoveDirection);
-        }, MOVE_REPEAT_MS);
-    }
-
-    function stopMoveLoop(direction: Dir) {
-        if (activeMoveDirection !== direction) return;
-        activeMoveDirection = null;
-        if (moveRepeatTimer != null) {
-            window.clearInterval(moveRepeatTimer);
-            moveRepeatTimer = null;
-        }
-    }
-
-    function stopMoveLoopAll() {
-        activeMoveDirection = null;
-        if (moveRepeatTimer != null) {
-            window.clearInterval(moveRepeatTimer);
-            moveRepeatTimer = null;
-        }
-    }
-
-    function sendAttack() {
-        const now = performance.now();
-        if (now - lastAttackAt < ATTACK_COOLDOWN_MS) return;
-        lastAttackAt = now;
-        if (ws?.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: "Attack" }));
-        }
-    }
-
-    function onMsg(m: ServerMessage) {
-        switch (m.type) {
-            case "Welcome":
-                playerId = m.player_id;
-                controls.status.textContent = "Connected";
-                showOverlay();
-                break;
-            case "WaitingForOpponent":
-                controls.status.textContent = "Waiting for opponent…";
-                showOverlay();
-                break;
-            case "MatchStart": {
-                resetQueueUi();
-                controls.status.textContent = "In match";
-                try {
-                    if (m.tiles) {
-                        const parsed = parseTiles(m.tiles, m.world_width, m.world_height);
-                        setWorld(parsed);
-                    } else {
-                        throw new Error("Server did not send tiles");
-                    }
-                } catch (err: any) {
-                    console.error(err);
-                    break;
+                if (m.tiles) {
+                    const parsed = parseTiles(m.tiles, m.world_width, m.world_height);
+                    setWorld(parsed);
+                } else {
+                    throw new Error("Server did not send tiles");
                 }
-                resetForMatch(m.spawn_x, m.spawn_y);
-                hideOverlay();
-                updateStatePanel();
+            } catch (err: any) {
+                console.error(err);
                 break;
             }
-            case "StateUpdate": {
-                applyStateUpdate(m);
-                updateStatePanel();
-                break;
-            }
-            case "ItemPickedUp":
-                break;
-            case "DragonRevealed":
-                gameState.dragon = { x: m.x, y: m.y, w: m.width, h: m.height, hp: 0 };
-                break;
-            case "AttackResult":
-                break;
-            case "MoveDenied":
-                controls.status.textContent = "Blocked: " + m.reason;
-                break;
-            case "MatchEnd":
-                controls.status.textContent = "Winner: " + m.winner;
-                resetQueueUi();
-                showOverlay();
-                break;
-            case "OpponentDisconnected":
-                controls.status.textContent = "Opponent left";
-                resetQueueUi();
-                showOverlay();
-                break;
-            case "Error":
-                controls.status.textContent = m.message;
-                resetQueueUi();
-                showOverlay();
-                break;
-            default:
-                console.log("?", m);
+            resetForMatch(m.spawn_x, m.spawn_y);
+            hideOverlay();
+            updateStatePanel();
+            break;
         }
-    }
-
-    function resetQueueUi() {
-        isQueueing = false;
-        controls.connectBtn.disabled = false;
-        controls.connectBtn.textContent = "Enter Queue";
-    }
-
-    function updateStatePanel() {
-        controls.stateGrid.innerHTML = "";
-        const rows: [string, string][] = [
-            ["Position", `${gameState.you.x},${gameState.you.y}`],
-            ["HP", String(gameState.you.hp)],
-            ["Items", (gameState.you.inv || []).join(", ") || "—"],
-            ["Opponent", `${gameState.opp.x},${gameState.opp.y}`],
-            ["Opp HP", String(gameState.opp.hp)],
-            ["Opp Items", String(gameState.opp.invCount)],
-            ["Dragon", gameState.dragon ? `${gameState.dragon.hp} HP` : "Hidden"],
-        ];
-        for (const [k, v] of rows) {
-            const d = document.createElement("div");
-            d.className = "state-row";
-            d.innerHTML = `<span>${k}</span><span>${v}</span>`;
-            controls.stateGrid.appendChild(d);
+        case "StateUpdate": {
+            applyStateUpdate(m);
+            updateStatePanel();
+            break;
         }
+        case "ItemPickedUp":
+            break;
+        case "DragonRevealed":
+            gameState.dragon = { x: m.x, y: m.y, w: m.width, h: m.height, hp: 0 };
+            break;
+        case "AttackResult":
+            break;
+        case "MoveDenied":
+            controls.status.textContent = "Blocked: " + m.reason;
+            break;
+        case "MatchEnd":
+            controls.status.textContent = "Winner: " + m.winner;
+            resetQueueUi();
+            showOverlay();
+            break;
+        case "OpponentDisconnected":
+            controls.status.textContent = "Opponent left";
+            resetQueueUi();
+            showOverlay();
+            break;
+        case "Error":
+            controls.status.textContent = m.message;
+            resetQueueUi();
+            showOverlay();
+            break;
+        default:
+            console.log("?", m);
     }
+}
 
-    function showOverlay() {
-        controls.overlay.style.display = "flex";
+function resetQueueUi() {
+    isQueueing = false;
+    controls.connectBtn.disabled = false;
+    controls.connectBtn.textContent = "Enter Queue";
+}
+
+function updateStatePanel() {
+    controls.stateGrid.innerHTML = "";
+    const rows: [string, string][] = [
+        ["Position", `${gameState.you.x},${gameState.you.y}`],
+        ["HP", String(gameState.you.hp)],
+        ["Items", (gameState.you.inv || []).join(", ") || "—"],
+        ["Opponent", `${gameState.opp.x},${gameState.opp.y}`],
+        ["Opp HP", String(gameState.opp.hp)],
+        ["Opp Items", String(gameState.opp.invCount)],
+        ["Dragon", gameState.dragon ? `${gameState.dragon.hp} HP` : "Hidden"],
+    ];
+    for (const [k, v] of rows) {
+        const d = document.createElement("div");
+        d.className = "state-row";
+        d.innerHTML = `<span>${k}</span><span>${v}</span>`;
+        controls.stateGrid.appendChild(d);
     }
+}
 
-    function hideOverlay() {
-        controls.overlay.style.display = "none";
+function showOverlay() {
+    controls.overlay.style.display = "flex";
+}
+
+function hideOverlay() {
+    controls.overlay.style.display = "none";
+}
+
+function keyToDirection(key: string): Dir | null {
+    const k = key.toLowerCase();
+    if (k === "w" || key === "ArrowUp") return "Up";
+    if (k === "s" || key === "ArrowDown") return "Down";
+    if (k === "a" || key === "ArrowLeft") return "Left";
+    if (k === "d" || key === "ArrowRight") return "Right";
+    return null;
+}
+
+function parseTiles(tileStr: string, W: number, H: number) {
+    if (!tileStr) throw new Error("Tile string missing");
+    if (W !== WORLD_WIDTH || H !== WORLD_HEIGHT) {
+        console.warn(`Unexpected world size ${W}x${H}; expected ${WORLD_WIDTH}x${WORLD_HEIGHT}`);
     }
-
-    function keyToDirection(key: string): Dir | null {
-        const k = key.toLowerCase();
-        if (k === "w" || key === "ArrowUp") return "Up";
-        if (k === "s" || key === "ArrowDown") return "Down";
-        if (k === "a" || key === "ArrowLeft") return "Left";
-        if (k === "d" || key === "ArrowRight") return "Right";
-        return null;
+    if (tileStr.length !== W * H) {
+        throw new Error(`Tile string length ${tileStr.length} != ${W}x${H}`);
     }
-
-    function parseTiles(tileStr: string, W: number, H: number) {
-        if (!tileStr) throw new Error("Tile string missing");
-        if (W !== WORLD_WIDTH || H !== WORLD_HEIGHT) {
-            console.warn(`Unexpected world size ${W}x${H}; expected ${WORLD_WIDTH}x${WORLD_HEIGHT}`);
+    const t: TileType[][] = [];
+    for (let y = 0; y < H; y++) {
+        const row: TileType[] = [];
+        for (let x = 0; x < W; x++) {
+            const ch = tileStr[y * W + x];
+            row.push(TILE_CHAR[ch] ?? "Grass");
         }
-        if (tileStr.length !== W * H) {
-            throw new Error(`Tile string length ${tileStr.length} != ${W}x${H}`);
-        }
-        const t: TileType[][] = [];
-        for (let y = 0; y < H; y++) {
-            const row: TileType[] = [];
-            for (let x = 0; x < W; x++) {
-                const ch = tileStr[y * W + x];
-                row.push(TILE_CHAR[ch] ?? "Grass");
-            }
-            t.push(row);
-        }
-        return t;
+        t.push(row);
     }
+    return t;
+}
 
-    bootstrap();
-        moveRepeatTimer = null;
+bootstrap();
+moveRepeatTimer = null;

@@ -54,11 +54,11 @@ export interface GameState {
         opp: AnimState;
     };
     prev:
-        | {
-              you: { x: number; y: number };
-              opp: { x: number; y: number };
-          }
-        | null;
+    | {
+        you: { x: number; y: number };
+        opp: { x: number; y: number };
+    }
+    | null;
 }
 
 export interface ServerMatchStart {
@@ -151,4 +151,4 @@ export type ServerMessage =
     | ServerMatchEnd
     | ServerOpponentDisconnected
     | ServerErrorMsg
-    | { type: string; [k: string]: unknown };
+    | { type: string;[k: string]: unknown };
