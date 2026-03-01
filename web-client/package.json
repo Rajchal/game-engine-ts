@@ -1,0 +1,13 @@
+{
+  "name": "dragon-speedrun-web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "esbuild src/main.ts --bundle --format=esm --target=es2020 --outfile=main.js --sourcemap",
+    "dev": "esbuild src/main.ts --bundle --format=esm --target=es2020 --outfile=main.js --sourcemap --watch"
+  },
+  "devDependencies": {
+    "esbuild": "^0.21.5",
+    "typescript": "^5.4.5"
+  }
+}
