@@ -1,8 +1,8 @@
 export type TileType = "Grass" | "Water" | "Wall" | "Forest" | "Sand";
 export type Dir = "Up" | "Down" | "Left" | "Right";
 
-export const WORLD_WIDTH = 200;
-export const WORLD_HEIGHT = 200;
+export const WORLD_WIDTH = 100;
+export const WORLD_HEIGHT = 100;
 export const VIEWPORT_TILES_X = 40;
 export const VIEWPORT_TILES_Y = 22;
 export const TILE_PX = 16;

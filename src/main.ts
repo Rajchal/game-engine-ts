@@ -1,44 +1,4 @@
-type TileType = "Grass" | "Water" | "Wall" | "Forest" | "Sand";
-
-interface Controls {
-    urlInput: HTMLInputElement;
-    nameInput: HTMLInputElement;
-    connectBtn: HTMLButtonElement;
-    status: HTMLElement;
-    overlay: HTMLElement;
-    canvas: HTMLCanvasElement;
-    minimap: HTMLCanvasElement;
-    stateGrid: HTMLElement;
-}
-
-interface DragonState {
-    x: number;
-    y: number;
-    w: number;
-    h: number;
-    hp: number;
-}
-
-interface ServerMatchStart {
-    type: "MatchStart";
-    seed: number;
-    world_width: number;
-    world_height: number;
-    spawn_x: number;
-    spawn_y: number;
-    opponent_name: string;
-    tiles?: string; // optional to defend against older servers
-}
-
-interface ServerStateUpdate {
-    type: "StateUpdate";
-    your_x: number;
-    your_y: number;
-    your_hp: number;
-    your_inventory: string[];
-    opponent_x: number;
-    opponent_y: number;
-    import {
+import {
     ATTACK_COOLDOWN_MS,
     Dir,
     MOVE_REPEAT_MS,
@@ -70,6 +30,8 @@ let activeMoveDirection: Dir | null = null;
 let moveRepeatTimer: number | null = null;
 let isQueueing = false;
 let lastFrame = performance.now();
+
+bootstrap();
 
 function bootstrap() {
     resizeCanvases(controls);
@@ -145,12 +107,12 @@ function doConnect() {
         showOverlay();
         ws?.send(JSON.stringify({ type: "Join", player_name: name }));
     };
-    ws.onclose = () => {
+    ws.onclose = ev => {
         controls.status.textContent = "Disconnected";
         resetQueueUi();
         showOverlay();
     };
-    ws.onerror = () => {
+    ws.onerror = err => {
         controls.status.textContent = "Error";
         resetQueueUi();
         showOverlay();
@@ -267,9 +229,8 @@ function onMsg(m: ServerMessage) {
             showOverlay();
             break;
         case "Error":
+            // Stay in the match; just surface the message.
             controls.status.textContent = m.message;
-            resetQueueUi();
-            showOverlay();
             break;
         default:
             console.log("?", m);
@@ -337,6 +298,3 @@ function parseTiles(tileStr: string, W: number, H: number) {
     }
     return t;
 }
-
-bootstrap();
-moveRepeatTimer = null;
