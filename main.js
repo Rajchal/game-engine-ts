@@ -18,9 +18,9 @@
   var TILE = 16;
   var VIEWPORT_WIDTH_PX = VIEWPORT_TILES_X * TILE;
   var VIEWPORT_HEIGHT_PX = VIEWPORT_TILES_Y * TILE;
-  var MOVE_REPEAT_MS = 60;
+  var MOVE_REPEAT_MS = 120;
   var ATTACK_COOLDOWN_MS = 120;
-  var POS_LERP = 0.28;
+  var POS_LERP = 0.2;
   var COLORS = {
     Grass: "#2d8a4e",
     Water: "#1d8cd6",

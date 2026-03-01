@@ -130,9 +130,10 @@ const VIEWPORT_TILES_Y = 22;
 const TILE = 16;
 const VIEWPORT_WIDTH_PX = VIEWPORT_TILES_X * TILE; // 640
 const VIEWPORT_HEIGHT_PX = VIEWPORT_TILES_Y * TILE; // 352
-const MOVE_REPEAT_MS = 60;
+// Input repeat rate and visual smoothing
+const MOVE_REPEAT_MS = 120; // slower repeat so movement speed is reduced
 const ATTACK_COOLDOWN_MS = 120;
-const POS_LERP = 0.28;
+const POS_LERP = 0.2; // lower to ease into new positions more smoothly
 const COLORS: Record<TileType, string> = {
     Grass: "#2d8a4e",
     Water: "#1d8cd6",
