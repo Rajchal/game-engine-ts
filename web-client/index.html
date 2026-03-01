@@ -10,7 +10,20 @@
 
 <body>
   <div class="screen">
-    <canvas id="map"></canvas>
+    <div class="game-shell">
+      <canvas id="map"></canvas>
+      <aside class="side-panel">
+        <div class="panel-card">
+          <h2>Your Stats</h2>
+          <div id="state-grid" class="state-grid"></div>
+        </div>
+        <div class="panel-card">
+          <h2>World Map</h2>
+          <canvas id="minimap" width="200" height="200"></canvas>
+        </div>
+      </aside>
+    </div>
+
     <div class="hud">
       <span id="status" class="status">Disconnected</span>
       <div class="controls">
