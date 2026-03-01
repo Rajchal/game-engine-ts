@@ -145,13 +145,14 @@ const COLORS: Record<TileType, string> = {
 // Sprite rendering (optional): drop a sheet at /sprites/tiles.png where each cell is SPRITE_PX square.
 // Fallback to flat colors if the sheet is missing or fails to load.
 const SPRITE_PX = 16;
-const SPRITE_PATH = "/sprites/tiles.png";
+// Use relative path so it works in Electron (file://) and in the browser.
+const SPRITE_PATH = "./sprites/tiles.png";
 const SPRITE_MAP: Record<TileType, { sx: number; sy: number }> = {
-    Grass: { sx: 0, sy: 0 },
-    Water: { sx: 1, sy: 0 },
-    Wall: { sx: 2, sy: 0 },
-    Forest: { sx: 3, sy: 0 },
-    Sand: { sx: 4, sy: 0 },
+    Grass: { sx: 2, sy: 0 },
+    Water: { sx: 0, sy: 0 },
+    Wall: { sx: 3, sy: 0 },
+    Forest: { sx: 4, sy: 0 },
+    Sand: { sx: 1, sy: 0 },
 };
 
 let spriteSheet: HTMLImageElement | null = null;
