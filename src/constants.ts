@@ -32,6 +32,7 @@ export const TILE_CHAR: Record<string, TileType> = {
 export const SPRITE_PX = 16;
 export const TILE_SPRITE_PATH = "./sprites/tiles.png";
 export const ACTOR_SPRITE_PATH = "./sprites/actors.png";
+export const DRAGON_SPRITE_PATH = "./sprites/dragon.png";
 export const ACTOR_FRAMES = 3;
 export const ACTOR_FRAME_MS = 140;
 export const ACTOR_DIR_ROW: Record<Dir, number> = {
@@ -40,3 +41,7 @@ export const ACTOR_DIR_ROW: Record<Dir, number> = {
     Right: 2,
     Up: 3,
 };
+
+// Dragon render footprint (tiles)
+export const DRAGON_TILES_W = 6;
+export const DRAGON_TILES_H = 6;

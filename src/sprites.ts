@@ -1,17 +1,21 @@
-import { ACTOR_SPRITE_PATH, SPRITE_PX, TILE_SPRITE_PATH } from "./constants";
+import { ACTOR_SPRITE_PATH, DRAGON_SPRITE_PATH, SPRITE_PX, TILE_SPRITE_PATH } from "./constants";
 
 export interface SpriteSheets {
     tiles: HTMLImageElement | null;
     actors: HTMLImageElement | null;
+    dragon: HTMLImageElement | null;
     readyTiles: boolean;
     readyActors: boolean;
+    readyDragon: boolean;
 }
 
 export const spriteSheets: SpriteSheets = {
     tiles: null,
     actors: null,
+    dragon: null,
     readyTiles: false,
     readyActors: false,
+    readyDragon: false,
 };
 
 export function loadSprites(onReady?: () => void) {
@@ -24,6 +28,12 @@ export function loadSprites(onReady?: () => void) {
     loadOne(ACTOR_SPRITE_PATH, img => {
         spriteSheets.actors = img;
         spriteSheets.readyActors = true;
+        onReady?.();
+    });
+
+    loadOne(DRAGON_SPRITE_PATH, img => {
+        spriteSheets.dragon = img;
+        spriteSheets.readyDragon = true;
         onReady?.();
     });
 }

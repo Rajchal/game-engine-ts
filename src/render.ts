@@ -10,8 +10,9 @@ import {
     WORLD_WIDTH,
 } from "./constants";
 import { currentFrame, directionRow, gameState } from "./state";
-import { SpriteSheets, drawActorFrame } from "./sprites";
 import { Controls } from "./types";
+import { DRAGON_TILES_H, DRAGON_TILES_W } from "./constants";
+import { SpriteSheets, drawActorFrame } from "./sprites";
 
 let renderScale = 1;
 let minimapScale = 1;
@@ -84,21 +85,19 @@ export function draw(controls: Controls, sprites: SpriteSheets) {
     }
 
     if (gameState.dragon) {
-        ctx.fillStyle = "rgba(220,38,38,0.45)";
-        ctx.strokeStyle = "#ef4444";
-        ctx.lineWidth = 2;
-        ctx.fillRect(
-            (gameState.dragon.x - camX) * TILE_PX,
-            (gameState.dragon.y - camY) * TILE_PX,
-            gameState.dragon.w * TILE_PX,
-            gameState.dragon.h * TILE_PX,
-        );
-        ctx.strokeRect(
-            (gameState.dragon.x - camX) * TILE_PX,
-            (gameState.dragon.y - camY) * TILE_PX,
-            gameState.dragon.w * TILE_PX,
-            gameState.dragon.h * TILE_PX,
-        );
+        const dx = (gameState.dragon.x - camX) * TILE_PX;
+        const dy = (gameState.dragon.y - camY) * TILE_PX;
+        const dw = gameState.dragon.w * TILE_PX || DRAGON_TILES_W * TILE_PX;
+        const dh = gameState.dragon.h * TILE_PX || DRAGON_TILES_H * TILE_PX;
+        if (sprites.readyDragon && sprites.dragon) {
+            ctx.drawImage(sprites.dragon, 0, 0, sprites.dragon.width, sprites.dragon.height, dx, dy, dw, dh);
+        } else {
+            ctx.fillStyle = "rgba(220,38,38,0.45)";
+            ctx.strokeStyle = "#ef4444";
+            ctx.lineWidth = 2;
+            ctx.fillRect(dx, dy, dw, dh);
+            ctx.strokeRect(dx, dy, dw, dh);
+        }
     }
 
     drawOpponent(ctx, sprites, camX, camY);
