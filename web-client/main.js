@@ -7,7 +7,15 @@ var controls = {
   overlay: document.getElementById("connect-overlay"),
   canvas: document.getElementById("map")
 };
-var TILE = 8;
+var WORLD_WIDTH = 200;
+var WORLD_HEIGHT = 200;
+var VIEWPORT_TILES_X = 40;
+var VIEWPORT_TILES_Y = 22;
+var TILE = 16;
+var VIEWPORT_WIDTH_PX = VIEWPORT_TILES_X * TILE;
+var VIEWPORT_HEIGHT_PX = VIEWPORT_TILES_Y * TILE;
+var MOVE_COOLDOWN_MS = 70;
+var ATTACK_COOLDOWN_MS = 120;
 var COLORS = {
   Grass: "#2d8a4e",
   Water: "#1d8cd6",
@@ -44,10 +52,17 @@ var playerId = null;
 var you = { x: 0, y: 0, hp: 0, inv: [] };
 var opp = { x: 0, y: 0, hp: 0, invCount: 0 };
 var dragon = null;
+var lastMoveAt = 0;
+var lastAttackAt = 0;
 function sizeCanvas() {
-  const r = controls.canvas.getBoundingClientRect();
-  controls.canvas.width = Math.round(r.width);
-  controls.canvas.height = Math.round(r.height);
+  controls.canvas.width = VIEWPORT_WIDTH_PX;
+  controls.canvas.height = VIEWPORT_HEIGHT_PX;
+  const scale = Math.max(
+    1,
+    Math.floor(Math.min(window.innerWidth / VIEWPORT_WIDTH_PX, window.innerHeight / VIEWPORT_HEIGHT_PX))
+  );
+  controls.canvas.style.width = `${VIEWPORT_WIDTH_PX * scale}px`;
+  controls.canvas.style.height = `${VIEWPORT_HEIGHT_PX * scale}px`;
 }
 window.addEventListener("resize", () => {
   sizeCanvas();
@@ -62,6 +77,7 @@ Array.from(document.querySelectorAll("[data-action='Attack']")).forEach((btn) =>
   btn.addEventListener("click", sendAttack);
 });
 window.addEventListener("keydown", (e) => {
+  if (e.repeat) return;
   if (e.key === "w") sendMove("Up");
   if (e.key === "s") sendMove("Down");
   if (e.key === "a") sendMove("Left");
@@ -102,11 +118,17 @@ function doConnect() {
   };
 }
 function sendMove(direction) {
+  const now = performance.now();
+  if (now - lastMoveAt < MOVE_COOLDOWN_MS) return;
+  lastMoveAt = now;
   if (ws?.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({ type: "Move", direction }));
   }
 }
 function sendAttack() {
+  const now = performance.now();
+  if (now - lastAttackAt < ATTACK_COOLDOWN_MS) return;
+  lastAttackAt = now;
   if (ws?.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({ type: "Attack" }));
   }
@@ -196,14 +218,13 @@ function draw() {
   const c = controls.canvas;
   const ctx = c.getContext("2d");
   if (!ctx) return;
-  const cw = c.width;
-  const ch = c.height;
-  const tilesX = Math.ceil(cw / TILE) + 2;
-  const tilesY = Math.ceil(ch / TILE) + 2;
+  const tilesX = VIEWPORT_TILES_X;
+  const tilesY = VIEWPORT_TILES_Y;
   const camX = you.x - Math.floor(tilesX / 2);
   const camY = you.y - Math.floor(tilesY / 2);
+  ctx.imageSmoothingEnabled = false;
   ctx.fillStyle = "#111";
-  ctx.fillRect(0, 0, cw, ch);
+  ctx.fillRect(0, 0, c.width, c.height);
   for (let r = 0; r < tilesY; r++) {
     for (let col = 0; col < tilesX; col++) {
       const wx = camX + col;
@@ -264,6 +285,9 @@ var TILE_CHAR = {
 };
 function parseTiles(tileStr, W, H) {
   if (!tileStr) throw new Error("Tile string missing");
+  if (W !== WORLD_WIDTH || H !== WORLD_HEIGHT) {
+    console.warn(`Unexpected world size ${W}x${H}; expected ${WORLD_WIDTH}x${WORLD_HEIGHT}`);
+  }
   if (tileStr.length !== W * H) {
     throw new Error(`Tile string length ${tileStr.length} != ${W}x${H}`);
   }
