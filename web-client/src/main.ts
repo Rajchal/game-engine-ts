@@ -5,9 +5,8 @@ interface Controls {
     nameInput: HTMLInputElement;
     connectBtn: HTMLButtonElement;
     status: HTMLElement;
-    log: HTMLTextAreaElement;
+    overlay: HTMLElement;
     canvas: HTMLCanvasElement;
-    stateGrid: HTMLElement;
 }
 
 interface DragonState {
@@ -116,9 +115,8 @@ const controls: Controls = {
     nameInput: document.getElementById("player-name") as HTMLInputElement,
     connectBtn: document.getElementById("connect") as HTMLButtonElement,
     status: document.getElementById("status")!,
-    log: document.getElementById("log") as HTMLTextAreaElement,
+    overlay: document.getElementById("connect-overlay")!,
     canvas: document.getElementById("map") as HTMLCanvasElement,
-    stateGrid: document.getElementById("state-grid")!,
 };
 
 const TILE = 8;
@@ -129,6 +127,34 @@ const COLORS: Record<TileType, string> = {
     Forest: "#1b7a3d",
     Sand: "#dbb544",
 };
+
+// Sprite rendering (optional): drop a sheet at /sprites/tiles.png where each cell is SPRITE_PX square.
+// Fallback to flat colors if the sheet is missing or fails to load.
+const SPRITE_PX = 16;
+const SPRITE_PATH = "/sprites/tiles.png";
+const SPRITE_MAP: Record<TileType, { sx: number; sy: number }> = {
+    Grass: { sx: 0, sy: 0 },
+    Water: { sx: 1, sy: 0 },
+    Wall: { sx: 2, sy: 0 },
+    Forest: { sx: 3, sy: 0 },
+    Sand: { sx: 4, sy: 0 },
+};
+
+let spriteSheet: HTMLImageElement | null = null;
+let spriteReady = false;
+
+function loadSprites() {
+    const img = new Image();
+    img.src = SPRITE_PATH;
+    img.onload = () => {
+        spriteSheet = img;
+        spriteReady = true;
+        draw();
+    };
+    img.onerror = () => {
+        console.warn("Sprite sheet not found at", SPRITE_PATH, "— using colors");
+    };
+}
 
 let ws: WebSocket | null = null;
 let world: TileType[][] | null = null;
@@ -158,10 +184,10 @@ Array.from(document.querySelectorAll("[data-action='Attack']")).forEach(btn => {
     btn.addEventListener("click", sendAttack);
 });
 window.addEventListener("keydown", e => {
-    if (e.key === "ArrowUp") sendMove("Up");
-    if (e.key === "ArrowDown") sendMove("Down");
-    if (e.key === "ArrowLeft") sendMove("Left");
-    if (e.key === "ArrowRight") sendMove("Right");
+    if (e.key === "w") sendMove("Up");
+    if (e.key === "s") sendMove("Down");
+    if (e.key === "a") sendMove("Left");
+    if (e.key === "d") sendMove("Right");
     if (e.key === " ") sendAttack();
 });
 
@@ -171,20 +197,22 @@ function doConnect() {
     const name = controls.nameInput.value.trim() || "Player";
     if (ws) ws.close();
     log("Connecting to " + url);
+    hideOverlay();
     ws = new WebSocket(url);
     controls.status.textContent = "Connecting…";
 
     ws.onopen = () => {
         controls.status.textContent = "Connected";
+        hideOverlay();
         ws?.send(JSON.stringify({ type: "Join", player_name: name }));
     };
     ws.onclose = () => {
         controls.status.textContent = "Disconnected";
-        log("Disconnected");
+        showOverlay();
     };
     ws.onerror = () => {
         controls.status.textContent = "Error";
-        log("WS error");
+        showOverlay();
     };
     ws.onmessage = ev => {
         let m: ServerMessage;
@@ -214,13 +242,15 @@ function onMsg(m: ServerMessage) {
     switch (m.type) {
         case "Welcome":
             playerId = m.player_id;
-            log("Welcome " + playerId);
+            controls.status.textContent = "Connected";
+            hideOverlay();
             break;
         case "WaitingForOpponent":
-            log("Waiting for opponent…");
+            controls.status.textContent = "Waiting for opponent…";
+            hideOverlay();
             break;
         case "MatchStart": {
-            log("Match seed=" + m.seed + " " + m.world_width + "x" + m.world_height);
+            controls.status.textContent = "In match";
             try {
                 if (m.tiles) {
                     world = parseTiles(m.tiles, m.world_width, m.world_height);
@@ -228,7 +258,6 @@ function onMsg(m: ServerMessage) {
                     throw new Error("Server did not send tiles");
                 }
             } catch (err: any) {
-                log("Tile parse error: " + (err?.message ?? err));
                 console.error(err);
                 break;
             }
@@ -236,7 +265,7 @@ function onMsg(m: ServerMessage) {
             you.y = m.spawn_y;
             opp = { x: m.spawn_x + 1, y: m.spawn_y, hp: 0, invCount: 0 };
             dragon = null;
-            log("World loaded OK, drawing…");
+            hideOverlay();
             draw();
             break;
         }
@@ -263,36 +292,27 @@ function onMsg(m: ServerMessage) {
             break;
         }
         case "ItemPickedUp":
-            log("Picked up: " + m.item);
             break;
         case "DragonRevealed":
             dragon = { x: m.x, y: m.y, w: m.width, h: m.height, hp: 0 };
-            log("Dragon at " + m.x + "," + m.y);
             draw();
             break;
         case "AttackResult":
-            log(
-                "Atk dealt=" +
-                m.damage_dealt +
-                " took=" +
-                m.damage_taken +
-                " hp=" +
-                m.your_hp +
-                " drg=" +
-                m.dragon_hp,
-            );
             break;
         case "MoveDenied":
-            log("Blocked: " + m.reason);
+            controls.status.textContent = "Blocked: " + m.reason;
             break;
         case "MatchEnd":
-            log("Winner: " + m.winner);
+            controls.status.textContent = "Winner: " + m.winner;
+            showOverlay();
             break;
         case "OpponentDisconnected":
-            log("Opponent left");
+            controls.status.textContent = "Opponent left";
+            showOverlay();
             break;
         case "Error":
-            log("Err: " + m.message);
+            controls.status.textContent = m.message;
+            showOverlay();
             break;
         default:
             log("? " + JSON.stringify(m));
@@ -321,8 +341,24 @@ function draw() {
             const wx = camX + col;
             const wy = camY + r;
             if (!world[0] || wx < 0 || wy < 0 || wy >= world.length || wx >= world[0].length) continue;
-            ctx.fillStyle = COLORS[world[wy][wx]] ?? "#333";
-            ctx.fillRect(col * TILE, r * TILE, TILE, TILE);
+            const tile = world[wy][wx];
+            if (spriteReady && spriteSheet) {
+                const { sx, sy } = SPRITE_MAP[tile];
+                ctx.drawImage(
+                    spriteSheet,
+                    sx * SPRITE_PX,
+                    sy * SPRITE_PX,
+                    SPRITE_PX,
+                    SPRITE_PX,
+                    col * TILE,
+                    r * TILE,
+                    TILE,
+                    TILE,
+                );
+            } else {
+                ctx.fillStyle = COLORS[tile] ?? "#333";
+                ctx.fillRect(col * TILE, r * TILE, TILE, TILE);
+            }
         }
     }
 
@@ -346,32 +382,20 @@ function draw() {
 }
 
 function updateState() {
-    controls.stateGrid.innerHTML = "";
-    const rows: [string, string][] = [
-        ["You", `${you.x},${you.y}`],
-        ["HP", String(you.hp)],
-        ["Items", (you.inv || []).join(", ") || "—"],
-        ["Opp", `${opp.x},${opp.y}`],
-        ["Opp HP", String(opp.hp)],
-        ["Opp items", String(opp.invCount)],
-        [
-            "Dragon",
-            dragon ? `${dragon.x},${dragon.y} ${dragon.w}x${dragon.h} HP ${dragon.hp}` : "hidden",
-        ],
-    ];
-    for (const [k, v] of rows) {
-        const d = document.createElement("div");
-        d.className = "state-row";
-        d.innerHTML = `<span>${k}</span><span>${v}</span>`;
-        controls.stateGrid.appendChild(d);
-    }
+    // Currently no visible state grid; hook reserved for future HUD.
 }
 
 // Logging
 function log(msg: string) {
-    const t = new Date().toLocaleTimeString();
-    controls.log.value += `[${t}] ${msg}\n`;
-    controls.log.scrollTop = controls.log.scrollHeight;
+    console.log(msg);
+}
+
+function showOverlay() {
+    controls.overlay.style.display = "flex";
+}
+
+function hideOverlay() {
+    controls.overlay.style.display = "none";
 }
 
 // Tiles
@@ -401,4 +425,5 @@ function parseTiles(tileStr: string, W: number, H: number): TileType[][] {
 }
 
 // Auto-connect on load
-doConnect();
+loadSprites();
+// Wait for user to connect via overlay.
