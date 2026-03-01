@@ -210,11 +210,11 @@ function buildMinimapBase(mw: number, mh: number) {
 function tileSprite(tile: string) {
     const map: Record<string, { sx: number; sy: number }> = {
         // Sheet columns: 0=Water, 1=Sand, 2=Grass, 3=Wall, 4=Forest (row 0)
-        Water: { sx: 0, sy: 0 },
-        Sand: { sx: 1, sy: 0 },
-        Grass: { sx: 2, sy: 0 },
-        Wall: { sx: 3, sy: 0 },
-        Forest: { sx: 4, sy: 0 },
+        Water: { sx: 1, sy: 0 },
+        Sand: { sx: 4, sy: 0 },
+        Grass: { sx: 0, sy: 0 },
+        Wall: { sx: 2, sy: 0 },
+        Forest: { sx: 3, sy: 0 },
     };
     return map[tile];
 }
