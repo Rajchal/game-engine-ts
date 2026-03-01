@@ -15,3 +15,5 @@ Cargo.lock
 target/
 ".env" 
 node_modules/
+*.js
+*.map
