@@ -8,6 +8,13 @@ export interface Controls {
     canvas: HTMLCanvasElement;
     minimap: HTMLCanvasElement;
     stateGrid: HTMLElement;
+    playerHearts: HTMLElement;
+    slotSword: HTMLElement;
+    slotArmor: HTMLElement;
+    slotMap: HTMLElement;
+    dragonHud: HTMLElement;
+    dragonHpFill: HTMLElement;
+    dragonHpValue: HTMLElement;
 }
 
 export interface DragonState {

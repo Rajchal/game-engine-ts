@@ -12,12 +12,25 @@
   <div class="screen">
     <div class="game-shell">
       <canvas id="map"></canvas>
+      <div id="dragon-hud" class="dragon-hud hidden">
+        <div class="dragon-label">DRAGON</div>
+        <div class="dragon-bar"><div id="dragon-hp-fill" class="dragon-hp-fill"></div></div>
+        <div id="dragon-hp-value" class="dragon-value">0 / 100</div>
+      </div>
       <aside class="side-panel">
         <div class="panel-card">
           <div id="state-grid" class="state-grid"></div>
         </div>
       </aside>
       <canvas id="minimap" width="140" height="140"></canvas>
+      <div class="bottom-hud">
+        <div id="player-hearts" class="hearts" aria-label="Health"></div>
+        <div class="inventory" aria-label="Inventory">
+          <div id="slot-sword" class="inv-slot" title="Holy Sword">🗡️</div>
+          <div id="slot-armor" class="inv-slot" title="Holy Armor">🛡️</div>
+          <div id="slot-map" class="inv-slot" title="Dragon Map">🗺️</div>
+        </div>
+      </div>
     </div>
 
     <div class="hud">

@@ -9,7 +9,7 @@ import {
 } from "./constants";
 import { draw, resizeCanvases } from "./render";
 import { loadSprites, spriteSheets } from "./sprites";
-import { applyLocalMove, applyStateUpdate, gameState, resetForMatch, setWorld, tickState } from "./state";
+import { applyStateUpdate, gameState, resetForMatch, setWorld, tickState } from "./state";
 import { Controls, ServerMessage } from "./types";
 
 const DEFAULT_WS_URL = new URLSearchParams(window.location.search).get("ws") || "ws://155.248.241.165:8080";
@@ -22,6 +22,13 @@ const controls: Controls = {
     canvas: document.getElementById("map") as HTMLCanvasElement,
     minimap: document.getElementById("minimap") as HTMLCanvasElement,
     stateGrid: document.getElementById("state-grid")!,
+    playerHearts: document.getElementById("player-hearts")!,
+    slotSword: document.getElementById("slot-sword")!,
+    slotArmor: document.getElementById("slot-armor")!,
+    slotMap: document.getElementById("slot-map")!,
+    dragonHud: document.getElementById("dragon-hud")!,
+    dragonHpFill: document.getElementById("dragon-hp-fill")!,
+    dragonHpValue: document.getElementById("dragon-hp-value")!,
 };
 
 let ws: WebSocket | null = null;
@@ -146,7 +153,6 @@ function doConnect() {
 function sendMove(direction: Dir) {
     if (ws?.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: "Move", direction }));
-        applyLocalMove(direction);
     }
 }
 
@@ -249,6 +255,12 @@ function onMsg(m: ServerMessage) {
             break;
         }
         case "AttackResult":
+            {
+                const msg = m as Extract<ServerMessage, { type: "AttackResult" }>;
+                gameState.you.hp = msg.your_hp;
+                if (gameState.dragon) gameState.dragon.hp = Math.max(0, msg.dragon_hp);
+                updateStatePanel();
+            }
             break;
         case "MoveDenied":
             controls.status.textContent = "Blocked: " + (m as Extract<ServerMessage, { type: "MoveDenied" }>).reason;
@@ -281,21 +293,64 @@ function resetQueueUi() {
 }
 
 function updateStatePanel() {
-    controls.stateGrid.innerHTML = "";
-    const rows: [string, string][] = [
-        ["Position", `${gameState.you.x},${gameState.you.y}`],
-        ["HP", String(gameState.you.hp)],
-        ["Items", (gameState.you.inv || []).join(", ") || "—"],
-        ["Opponent", `${gameState.opp.x},${gameState.opp.y}`],
-        ["Opp HP", String(gameState.opp.hp)],
-        ["Opp Items", String(gameState.opp.invCount)],
-    ];
-    for (const [k, v] of rows) {
-        const d = document.createElement("div");
-        d.className = "state-row";
-        d.innerHTML = `<span>${k}</span><span>${v}</span>`;
-        controls.stateGrid.appendChild(d);
+    const youHp = Math.max(0, Math.min(100, gameState.you.hp));
+    const oppHp = Math.max(0, Math.min(100, gameState.opp.hp));
+
+    controls.stateGrid.innerHTML = `
+        <div class="state-title">Adventurer HUD</div>
+        <div class="state-row">
+            <span class="state-key">📍 You</span>
+            <span class="state-val">${gameState.you.x}, ${gameState.you.y}</span>
+        </div>
+        <div class="state-meter-wrap">
+            <div class="state-meter-label"><span>❤️ HP</span><span>${youHp}</span></div>
+            <div class="state-meter"><div class="state-meter-fill you" style="width:${youHp}%"></div></div>
+        </div>
+        <div class="state-divider"></div>
+        <div class="state-row">
+            <span class="state-key">🎯 Rival</span>
+            <span class="state-val">${gameState.opp.x}, ${gameState.opp.y}</span>
+        </div>
+        <div class="state-row">
+            <span class="state-key">🧰 Loot</span>
+            <span class="state-val">${gameState.opp.invCount}</span>
+        </div>
+        <div class="state-meter-wrap">
+            <div class="state-meter-label"><span>💀 Rival HP</span><span>${oppHp}</span></div>
+            <div class="state-meter"><div class="state-meter-fill opp" style="width:${oppHp}%"></div></div>
+        </div>
+    `;
+
+    controls.playerHearts.innerHTML = renderHearts(youHp);
+    controls.slotSword.classList.toggle("owned", hasInventoryItem("holysword"));
+    controls.slotArmor.classList.toggle("owned", hasInventoryItem("holyarmor"));
+    controls.slotMap.classList.toggle("owned", hasInventoryItem("dragonmap"));
+
+    if (gameState.dragon) {
+        const dragonHp = Math.max(0, Math.min(100, gameState.dragon.hp));
+        controls.dragonHud.classList.remove("hidden");
+        controls.dragonHpFill.style.width = `${dragonHp}%`;
+        controls.dragonHpValue.textContent = `${dragonHp} / 100`;
+    } else {
+        controls.dragonHud.classList.add("hidden");
     }
+}
+
+function renderHearts(hp: number) {
+    const hearts: string[] = [];
+    const totalHearts = 10;
+    const fullHearts = Math.floor(hp / 10);
+    const hasHalf = hp % 10 >= 5;
+    for (let i = 0; i < totalHearts; i++) {
+        if (i < fullHearts) hearts.push(`<span class="heart full">❤</span>`);
+        else if (i === fullHearts && hasHalf) hearts.push(`<span class="heart half">❤</span>`);
+        else hearts.push(`<span class="heart empty">❤</span>`);
+    }
+    return hearts.join("");
+}
+
+function hasInventoryItem(key: string) {
+    return (gameState.you.inv || []).some(item => item.toLowerCase().replace(/[^a-z]/g, "").includes(key));
 }
 
 function showOverlay() {

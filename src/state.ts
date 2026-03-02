@@ -60,11 +60,19 @@ export function setWorld(world: GameState["world"]) {
 }
 
 export function applyLocalMove(direction: Dir) {
+    const prevX = gameState.you.x;
+    const prevY = gameState.you.y;
     const { nx, ny } = nextPos(gameState.you.x, gameState.you.y, direction);
+
+    if ((nx !== prevX || ny !== prevY) && !canOccupy(nx, ny)) {
+        setAnim(gameState.anim.you, direction, false);
+        return;
+    }
+
     gameState.you.x = nx;
     gameState.you.y = ny;
     gameState.you.dir = direction;
-    setAnim(gameState.anim.you, direction, true);
+    setAnim(gameState.anim.you, direction, nx !== prevX || ny !== prevY);
     if (gameState.prev) gameState.prev.you = { x: nx, y: ny };
 }
 
@@ -125,10 +133,10 @@ export function applyStateUpdate(update: {
 export function tickState(dtMs: number) {
     // Interpolate render positions
     const lerp = POS_LERP;
-    gameState.renderYou.x += (gameState.you.x - gameState.renderYou.x) * lerp;
-    gameState.renderYou.y += (gameState.you.y - gameState.renderYou.y) * lerp;
-    gameState.renderOpp.x += (gameState.opp.x - gameState.renderOpp.x) * lerp;
-    gameState.renderOpp.y += (gameState.opp.y - gameState.renderOpp.y) * lerp;
+    gameState.renderYou.x = smoothApproach(gameState.renderYou.x, gameState.you.x, lerp);
+    gameState.renderYou.y = smoothApproach(gameState.renderYou.y, gameState.you.y, lerp);
+    gameState.renderOpp.x = smoothApproach(gameState.renderOpp.x, gameState.opp.x, lerp);
+    gameState.renderOpp.y = smoothApproach(gameState.renderOpp.y, gameState.opp.y, lerp);
 
     // Animation advance
     advanceAnim(gameState.anim.you, isMoving(gameState.renderYou, gameState.you), dtMs);
@@ -201,6 +209,17 @@ function nextPos(x: number, y: number, dir: Dir) {
     const nx = clamp(x + dx, 0, WORLD_WIDTH - 1);
     const ny = clamp(y + dy, 0, WORLD_HEIGHT - 1);
     return { nx, ny };
+}
+
+function canOccupy(x: number, y: number) {
+    const tile = gameState.world?.[y]?.[x];
+    if (!tile) return true;
+    return tile !== "Wall" && tile !== "Water";
+}
+
+function smoothApproach(current: number, target: number, lerp: number) {
+    const next = current + (target - current) * lerp;
+    return Math.abs(target - next) < 0.12 ? target : next;
 }
 
 function clamp(v: number, lo: number, hi: number) {
