@@ -34,12 +34,14 @@ export const TILE_SPRITE_PATH = "./sprites/tiles.png";
 export const ACTOR_SPRITE_PATH = "./sprites/actors.png";
 export const DRAGON_SPRITE_PATH = "./sprites/dragon.png";
 export const ACTOR_FRAMES = 3;
-export const ACTOR_FRAME_MS = 140;
+export const ACTOR_FRAME_MS = 180;
+export const ACTOR_PINGPONG = true; // smoother 0-1-2-1 cycle
+export const ACTOR_MOVE_GRACE_MS = 140;
 export const ACTOR_DIR_ROW: Record<Dir, number> = {
-    Down: 0,
-    Left: 1,
-    Right: 2,
-    Up: 3,
+    Up: 0,
+    Right: 1,
+    Down: 2,
+    Left: 3,
 };
 
 // Dragon render footprint (tiles)

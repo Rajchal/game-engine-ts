@@ -2,6 +2,8 @@ import {
     ACTOR_DIR_ROW,
     ACTOR_FRAME_MS,
     ACTOR_FRAMES,
+    ACTOR_MOVE_GRACE_MS,
+    ACTOR_PINGPONG,
     Dir,
     POS_LERP,
     TILE_PX,
@@ -19,8 +21,8 @@ export const gameState: GameState = {
     dragon: null,
     minimapBase: null,
     anim: {
-        you: { dir: "Down", moving: false, elapsed: 0 },
-        opp: { dir: "Down", moving: false, elapsed: 0 },
+        you: { dir: "Down", moving: false, elapsed: 0, moveGraceMs: 0 },
+        opp: { dir: "Down", moving: false, elapsed: 0, moveGraceMs: 0 },
     },
     prev: null,
 };
@@ -44,8 +46,8 @@ export function resetForMatch(spawnX: number, spawnY: number) {
     gameState.renderOpp.y = gameState.opp.y;
     gameState.dragon = null;
     gameState.minimapBase = null;
-    gameState.anim.you = { dir: "Down", moving: false, elapsed: 0 };
-    gameState.anim.opp = { dir: "Down", moving: false, elapsed: 0 };
+    gameState.anim.you = { dir: "Down", moving: false, elapsed: 0, moveGraceMs: 0 };
+    gameState.anim.opp = { dir: "Down", moving: false, elapsed: 0, moveGraceMs: 0 };
     gameState.prev = {
         you: { x: gameState.you.x, y: gameState.you.y },
         opp: { x: gameState.opp.x, y: gameState.opp.y },
@@ -61,6 +63,7 @@ export function applyLocalMove(direction: Dir) {
     const { nx, ny } = nextPos(gameState.you.x, gameState.you.y, direction);
     gameState.you.x = nx;
     gameState.you.y = ny;
+    gameState.you.dir = direction;
     gameState.renderYou.x = nx;
     gameState.renderYou.y = ny;
     setAnim(gameState.anim.you, direction, true);
@@ -99,6 +102,9 @@ export function applyStateUpdate(update: {
     const youDir = dirFromDelta(prevYou.x, prevYou.y, gameState.you.x, gameState.you.y, gameState.you.dir);
     const oppDir = dirFromDelta(prevOpp.x, prevOpp.y, gameState.opp.x, gameState.opp.y, gameState.opp.dir);
 
+    gameState.you.dir = youDir;
+    gameState.opp.dir = oppDir;
+
     setAnim(gameState.anim.you, youDir, moved(prevYou, gameState.you));
     setAnim(gameState.anim.opp, oppDir, moved(prevOpp, gameState.opp));
 
@@ -133,8 +139,13 @@ export function tickState(dtMs: number) {
 
 export function currentFrame(anim: AnimState) {
     if (!anim.moving) return 1; // idle frame (middle)
-    const frame = Math.floor(anim.elapsed / ACTOR_FRAME_MS) % ACTOR_FRAMES;
-    return frame;
+    const step = Math.floor(anim.elapsed / ACTOR_FRAME_MS);
+    if (ACTOR_PINGPONG && ACTOR_FRAMES > 1) {
+        const period = ACTOR_FRAMES * 2 - 2; // e.g., 3 frames => 0 1 2 1
+        const idx = step % period;
+        return idx < ACTOR_FRAMES ? idx : period - idx;
+    }
+    return step % ACTOR_FRAMES;
 }
 
 export function directionRow(anim: AnimState) {
@@ -146,19 +157,28 @@ function isMoving(renderPos: { x: number; y: number }, target: { x: number; y: n
 }
 
 function advanceAnim(anim: AnimState, moving: boolean, dtMs: number) {
-    if (moving) {
+    const shouldAnimate = moving || anim.moveGraceMs > 0;
+    if (shouldAnimate) {
         anim.elapsed += dtMs;
         anim.moving = true;
+        if (moving) anim.moveGraceMs = ACTOR_MOVE_GRACE_MS;
+        else anim.moveGraceMs = Math.max(0, anim.moveGraceMs - dtMs);
     } else {
         anim.elapsed = 0;
         anim.moving = false;
+        anim.moveGraceMs = 0;
     }
 }
 
 function setAnim(anim: AnimState, dir: Dir, moving: boolean) {
     anim.dir = dir;
     anim.moving = moving;
-    if (!moving) anim.elapsed = 0;
+    if (moving) {
+        anim.moveGraceMs = ACTOR_MOVE_GRACE_MS;
+    } else {
+        anim.elapsed = 0;
+        anim.moveGraceMs = 0;
+    }
 }
 
 function dirFromDelta(px: number, py: number, x: number, y: number, fallback: Dir): Dir {

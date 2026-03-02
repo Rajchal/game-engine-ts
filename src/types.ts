@@ -39,6 +39,7 @@ export interface AnimState {
     dir: Dir;
     moving: boolean;
     elapsed: number;
+    moveGraceMs: number;
 }
 
 export interface GameState {
