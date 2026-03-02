@@ -18,6 +18,7 @@ const DEFAULT_WS_URL = new URLSearchParams(window.location.search).get("ws") || 
 const controls: Controls = {
     nameInput: document.getElementById("player-name") as HTMLInputElement,
     connectBtn: document.getElementById("connect") as HTMLButtonElement,
+    matchResult: document.getElementById("match-result")!,
     toastStack: document.getElementById("toast-stack")!,
     overlay: document.getElementById("connect-overlay")!,
     canvas: document.getElementById("map") as HTMLCanvasElement,
@@ -75,6 +76,7 @@ function wireInput() {
         btn.addEventListener("click", sendAttack);
     });
     window.addEventListener("keydown", e => {
+        if (isTypingTarget(e.target)) return;
         const direction = keyToDirection(e.key);
         if (direction) {
             e.preventDefault();
@@ -93,6 +95,7 @@ function wireInput() {
         }
     });
     window.addEventListener("keyup", e => {
+        if (isTypingTarget(e.target)) return;
         const direction = keyToDirection(e.key);
         if (direction) {
             e.preventDefault();
@@ -124,6 +127,7 @@ function doConnect() {
     isQueueing = true;
     controls.connectBtn.disabled = true;
     controls.connectBtn.textContent = "Joining...";
+    setMatchResult("");
     if (ws) ws.close();
     showOverlay();
     ws = new WebSocket(url);
@@ -225,6 +229,7 @@ function onMsg(m: ServerMessage) {
         }
         case "WaitingForOpponent":
             showToast("Waiting for opponent…", "info");
+            setMatchResult("Waiting for opponent…");
             showOverlay();
             break;
         case "MatchStart": {
@@ -243,6 +248,7 @@ function onMsg(m: ServerMessage) {
                 break;
             }
             resetForMatch(msg.spawn_x, msg.spawn_y);
+            setMatchResult("");
             hideOverlay();
             updateStatePanel();
             break;
@@ -308,12 +314,17 @@ function onMsg(m: ServerMessage) {
             showToast("Blocked: " + (m as Extract<ServerMessage, { type: "MoveDenied" }>).reason, "warn");
             break;
         case "MatchEnd":
-            showToast("Winner: " + (m as Extract<ServerMessage, { type: "MatchEnd" }>).winner, "info");
+            {
+                const winner = (m as Extract<ServerMessage, { type: "MatchEnd" }>).winner;
+                showToast("Winner: " + winner, "info");
+                setMatchResult(`Match over • Winner: ${winner}`);
+            }
             resetQueueUi();
             showOverlay();
             break;
         case "OpponentDisconnected":
             showToast("Opponent left", "warn");
+            setMatchResult("Match ended • Opponent disconnected");
             resetQueueUi();
             showOverlay();
             break;
@@ -321,6 +332,7 @@ function onMsg(m: ServerMessage) {
             const msg = m as Extract<ServerMessage, { type: "Error" }>;
             // Stay in the match; just surface the message.
             showToast(msg.message, "error");
+            if (controls.overlay.style.display !== "none") setMatchResult(`Server: ${msg.message}`);
             break;
         }
         default:
@@ -426,6 +438,16 @@ function showToast(message: string, kind: "info" | "warn" | "error" = "info") {
     }, 2200);
 }
 
+function setMatchResult(message: string) {
+    if (!message) {
+        controls.matchResult.textContent = "";
+        controls.matchResult.classList.add("hidden");
+        return;
+    }
+    controls.matchResult.textContent = message;
+    controls.matchResult.classList.remove("hidden");
+}
+
 function showOverlay() {
     controls.overlay.style.display = "flex";
 }
@@ -441,6 +463,13 @@ function keyToDirection(key: string): Dir | null {
     if (k === "a" || key === "ArrowLeft") return "Left";
     if (k === "d" || key === "ArrowRight") return "Right";
     return null;
+}
+
+function isTypingTarget(target: EventTarget | null) {
+    const el = target as HTMLElement | null;
+    if (!el) return false;
+    if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) return true;
+    return el.isContentEditable;
 }
 
 function parseTiles(tileStr: string, W: number, H: number) {

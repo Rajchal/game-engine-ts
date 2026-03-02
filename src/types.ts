@@ -3,6 +3,7 @@ import { Dir, TileType } from "./constants";
 export interface Controls {
     nameInput: HTMLInputElement;
     connectBtn: HTMLButtonElement;
+    matchResult: HTMLElement;
     toastStack: HTMLElement;
     overlay: HTMLElement;
     canvas: HTMLCanvasElement;
