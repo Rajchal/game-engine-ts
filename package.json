@@ -1,18 +1,64 @@
 {
+  "name": "dragon-speedrun",
+  "version": "1.0.0",
+  "description": "Dragon Speedrun desktop client",
   "main": "electron-main.js",
+  "author": "rajchal",
+  "license": "MIT",
   "scripts": {
     "build:renderer": "esbuild src/main.ts --bundle --sourcemap --outfile=main.js",
     "dev": "esbuild src/main.ts --bundle --sourcemap --outfile=main.js --watch",
-    "start": "npm run build:renderer && electron ."
+    "start": "npm run build:renderer && electron .",
+    "pack": "npm run build:renderer && electron-builder --dir",
+    "dist": "npm run build:renderer && electron-builder"
   },
   "devDependencies": {
     "@types/node": "^25.3.2",
     "@types/ws": "^8.18.1",
-    "electron": "^40.6.1"
+    "electron": "^40.6.1",
+    "electron-builder": "^24.13.3"
   },
   "dependencies": {
     "esbuild": "^0.27.3",
     "typescript": "^5.9.3",
     "ws": "^8.19.0"
+  },
+  "build": {
+    "appId": "com.rajchal.dragonspeedrun",
+    "productName": "Dragon Speedrun",
+    "files": [
+      "electron-main.js",
+      "index.html",
+      "styles.css",
+      "main.js",
+      "main.js.map",
+      "sprites/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Game"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ]
+    },
+    "publish": [
+      {
+        "provider": "github"
+      }
+    ]
   }
 }
