@@ -47,6 +47,7 @@ export const ACTOR_DIR_ROW: Record<Dir, number> = {
 // Dragon render footprint (tiles)
 export const DRAGON_TILES_W = 6;
 export const DRAGON_TILES_H = 6;
+export const DRAGON_MAX_HP = 300;
 export const DRAGON_FRAMES = 3;
 export const DRAGON_FRAME_MS = 180;
 export const DRAGON_PINGPONG = true;

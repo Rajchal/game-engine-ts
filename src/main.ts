@@ -1,5 +1,6 @@
 import {
     ATTACK_COOLDOWN_MS,
+    DRAGON_MAX_HP,
     Dir,
     MOVE_REPEAT_MS,
     TileType,
@@ -345,10 +346,11 @@ function updateStatePanel() {
     opponentSlots().forEach((slot, idx) => slot.classList.toggle("owned", idx < oppCount));
 
     if (gameState.dragon) {
-        const dragonHp = Math.max(0, Math.min(100, gameState.dragon.hp));
+        const dragonHp = Math.max(0, Math.min(DRAGON_MAX_HP, gameState.dragon.hp));
+        const dragonPct = Math.min(100, (dragonHp / DRAGON_MAX_HP) * 100);
         controls.dragonHud.classList.remove("hidden");
-        controls.dragonHpFill.style.width = `${dragonHp}%`;
-        controls.dragonHpValue.textContent = `${dragonHp} / 100`;
+        controls.dragonHpFill.style.width = `${dragonPct}%`;
+        controls.dragonHpValue.textContent = `${dragonHp} / ${DRAGON_MAX_HP}`;
     } else {
         controls.dragonHud.classList.add("hidden");
     }
