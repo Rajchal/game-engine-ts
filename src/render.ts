@@ -1,4 +1,11 @@
 import {
+    ACTOR_DIR_ROW,
+    DRAGON_FRAMES,
+    DRAGON_FRAME_MS,
+    DRAGON_PINGPONG,
+    Dir,
+    DRAGON_TILES_H,
+    DRAGON_TILES_W,
     SPRITE_PX,
     TILE_COLORS,
     TILE_PX,
@@ -11,8 +18,7 @@ import {
 } from "./constants";
 import { currentFrame, directionRow, gameState } from "./state";
 import { Controls } from "./types";
-import { DRAGON_TILES_H, DRAGON_TILES_W } from "./constants";
-import { SpriteSheets, drawActorFrame } from "./sprites";
+import { SpriteSheets, drawActorFrame, drawDragonFrame } from "./sprites";
 
 let renderScale = 1;
 let minimapScale = 1;
@@ -92,9 +98,13 @@ export function draw(controls: Controls, sprites: SpriteSheets) {
         const dy = (gameState.dragon.y - camY) * TILE_PX;
         const dw = gameState.dragon.w * TILE_PX || DRAGON_TILES_W * TILE_PX;
         const dh = gameState.dragon.h * TILE_PX || DRAGON_TILES_H * TILE_PX;
-        if (sprites.readyDragon && sprites.dragon) {
+        const dragonDir = dragonFacingPlayer();
+        const frame = currentDragonFrame();
+        const row = ACTOR_DIR_ROW[dragonDir];
+        const drawn = drawDragonFrame(ctx, sprites, frame, row, dx, dy, dw, dh);
+        if (!drawn && sprites.readyDragon && sprites.dragon) {
             ctx.drawImage(sprites.dragon, 0, 0, sprites.dragon.width, sprites.dragon.height, dx, dy, dw, dh);
-        } else {
+        } else if (!drawn) {
             ctx.fillStyle = "rgba(220,38,38,0.45)";
             ctx.strokeStyle = "#ef4444";
             ctx.lineWidth = 2;
@@ -111,6 +121,28 @@ export function draw(controls: Controls, sprites: SpriteSheets) {
     ctx.fillText("YOU", (gameState.renderYou.x - camX) * TILE_PX, (gameState.renderYou.y - camY) * TILE_PX - TILE_PX - 2);
 
     drawMiniMap(controls, sprites);
+}
+
+function currentDragonFrame() {
+    if (DRAGON_FRAMES <= 1) return 0;
+    const step = Math.floor(performance.now() / DRAGON_FRAME_MS);
+    if (!DRAGON_PINGPONG) return step % DRAGON_FRAMES;
+    const period = DRAGON_FRAMES * 2 - 2;
+    const idx = step % period;
+    return idx < DRAGON_FRAMES ? idx : period - idx;
+}
+
+function dragonFacingPlayer(): Dir {
+    if (!gameState.dragon) return "Down";
+    const dragonCenterX = gameState.dragon.x + gameState.dragon.w / 2;
+    const dragonCenterY = gameState.dragon.y + gameState.dragon.h / 2;
+    const dx = gameState.you.x - dragonCenterX;
+    const dy = gameState.you.y - dragonCenterY;
+
+    if (Math.abs(dx) > Math.abs(dy)) {
+        return dx >= 0 ? "Right" : "Left";
+    }
+    return dy >= 0 ? "Down" : "Up";
 }
 
 function drawYou(ctx: CanvasRenderingContext2D, sprites: SpriteSheets, camX: number, camY: number) {
