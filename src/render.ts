@@ -16,6 +16,9 @@ import { SpriteSheets, drawActorFrame } from "./sprites";
 
 let renderScale = 1;
 let minimapScale = 1;
+const ACTOR_DRAW_W = TILE_PX;
+const ACTOR_DRAW_H = 24;
+const ACTOR_HEAD_GAP = ACTOR_DRAW_H - TILE_PX;
 
 export function resizeCanvases(controls: Controls) {
     const dpr = window.devicePixelRatio || 1;
@@ -113,38 +116,42 @@ export function draw(controls: Controls, sprites: SpriteSheets) {
 function drawYou(ctx: CanvasRenderingContext2D, sprites: SpriteSheets, camX: number, camY: number) {
     const frame = currentFrame(gameState.anim.you);
     const row = directionRow(gameState.anim.you);
+    const drawX = (gameState.renderYou.x - camX) * TILE_PX;
+    const drawY = (gameState.renderYou.y - camY) * TILE_PX - ACTOR_HEAD_GAP;
     const drawn = drawActorFrame(
         ctx,
         sprites,
         frame,
         row,
-        (gameState.renderYou.x - camX) * TILE_PX,
-        (gameState.renderYou.y - camY) * TILE_PX - TILE_PX,
-        TILE_PX,
-        TILE_PX * 2,
+        drawX,
+        drawY,
+        ACTOR_DRAW_W,
+        ACTOR_DRAW_H,
     );
     if (!drawn) {
         ctx.fillStyle = "#fbbf24";
-        ctx.fillRect((gameState.renderYou.x - camX) * TILE_PX, (gameState.renderYou.y - camY) * TILE_PX - TILE_PX, TILE_PX, TILE_PX * 2);
+        ctx.fillRect(drawX, drawY, ACTOR_DRAW_W, ACTOR_DRAW_H);
     }
 }
 
 function drawOpponent(ctx: CanvasRenderingContext2D, sprites: SpriteSheets, camX: number, camY: number) {
     const frame = currentFrame(gameState.anim.opp);
     const row = directionRow(gameState.anim.opp);
+    const drawX = (gameState.renderOpp.x - camX) * TILE_PX;
+    const drawY = (gameState.renderOpp.y - camY) * TILE_PX - ACTOR_HEAD_GAP;
     const drawn = drawActorFrame(
         ctx,
         sprites,
         frame,
         row,
-        (gameState.renderOpp.x - camX) * TILE_PX,
-        (gameState.renderOpp.y - camY) * TILE_PX - TILE_PX,
-        TILE_PX,
-        TILE_PX * 2,
+        drawX,
+        drawY,
+        ACTOR_DRAW_W,
+        ACTOR_DRAW_H,
     );
     if (!drawn) {
         ctx.fillStyle = "#a855f7";
-        ctx.fillRect((gameState.renderOpp.x - camX) * TILE_PX, (gameState.renderOpp.y - camY) * TILE_PX - TILE_PX, TILE_PX, TILE_PX * 2);
+        ctx.fillRect(drawX, drawY, ACTOR_DRAW_W, ACTOR_DRAW_H);
     }
 }
 
