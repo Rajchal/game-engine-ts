@@ -27,6 +27,15 @@ jobs:
           node-version: 20
           cache: npm
 
+      - name: Sync app version from tag
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "Using version $VERSION from tag $GITHUB_REF_NAME"
+          node -e "const fs=require('fs'); const v=process.env.VERSION; const pkg=JSON.parse(fs.readFileSync('package.json','utf8')); pkg.version=v; fs.writeFileSync('package.json', JSON.stringify(pkg,null,2)+'\\n'); const lockPath='package-lock.json'; if(fs.existsSync(lockPath)){ const lock=JSON.parse(fs.readFileSync(lockPath,'utf8')); lock.version=v; if(lock.packages && lock.packages['']) lock.packages[''].version=v; fs.writeFileSync(lockPath, JSON.stringify(lock,null,2)+'\\n'); }" 
+        env:
+          VERSION: ${{ github.ref_name }}
+
       - name: Install dependencies
         run: npm ci
 
