@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "description": "Dragon Speedrun desktop client",
   "main": "electron-main.js",
-  "author": "rajchal",
+  "author": {
+    "name": "rajchal",
+    "email": "rajchal@users.noreply.github.com"
+  },
   "license": "MIT",
   "scripts": {
     "build:renderer": "esbuild src/main.ts --bundle --sourcemap --outfile=main.js",
@@ -43,7 +46,8 @@
         "AppImage",
         "deb"
       ],
-      "category": "Game"
+      "category": "Game",
+      "maintainer": "rajchal <rajchal@users.noreply.github.com>"
     },
     "win": {
       "target": [
