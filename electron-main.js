@@ -2,6 +2,7 @@ const { app, BrowserWindow } = require("electron");
 const path = require("path");
 
 function createWindow() {
+    const wsUrl = process.env.WS_URL || "ws://155.248.241.165:8080";
     const win = new BrowserWindow({
         width: 1200,
         height: 800,
@@ -16,7 +17,7 @@ function createWindow() {
         win.show();
     });
 
-    win.loadFile(path.join(__dirname, "index.html"));
+    win.loadFile(path.join(__dirname, "index.html"), { query: { ws: wsUrl } });
 }
 
 app.whenReady().then(() => {

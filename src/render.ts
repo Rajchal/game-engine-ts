@@ -25,6 +25,7 @@ let minimapScale = 1;
 const ACTOR_DRAW_W = TILE_PX;
 const ACTOR_DRAW_H = 24;
 const ACTOR_HEAD_GAP = ACTOR_DRAW_H - TILE_PX;
+const MINIMAP_BASE_SIZE = 140;
 
 export function resizeCanvases(controls: Controls) {
     const dpr = window.devicePixelRatio || 1;
@@ -37,12 +38,11 @@ export function resizeCanvases(controls: Controls) {
     controls.canvas.style.height = `${VIEWPORT_HEIGHT_PX * renderScale}px`;
 
     // Minimap
-    minimapScale = renderScale;
-    const baseSize = 200;
-    controls.minimap.width = Math.round(baseSize * dpr * minimapScale);
-    controls.minimap.height = Math.round(baseSize * dpr * minimapScale);
-    controls.minimap.style.width = `${baseSize * minimapScale}px`;
-    controls.minimap.style.height = `${baseSize * minimapScale}px`;
+    minimapScale = 1;
+    controls.minimap.width = Math.round(MINIMAP_BASE_SIZE * dpr * minimapScale);
+    controls.minimap.height = Math.round(MINIMAP_BASE_SIZE * dpr * minimapScale);
+    controls.minimap.style.width = `${MINIMAP_BASE_SIZE * minimapScale}px`;
+    controls.minimap.style.height = `${MINIMAP_BASE_SIZE * minimapScale}px`;
     gameState.minimapBase = null;
 }
 

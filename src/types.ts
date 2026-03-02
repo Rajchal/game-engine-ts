@@ -1,7 +1,6 @@
 import { Dir, TileType } from "./constants";
 
 export interface Controls {
-    urlInput: HTMLInputElement;
     nameInput: HTMLInputElement;
     connectBtn: HTMLButtonElement;
     status: HTMLElement;

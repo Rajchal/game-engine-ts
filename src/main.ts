@@ -12,8 +12,9 @@ import { loadSprites, spriteSheets } from "./sprites";
 import { applyLocalMove, applyStateUpdate, gameState, resetForMatch, setWorld, tickState } from "./state";
 import { Controls, ServerMessage } from "./types";
 
+const DEFAULT_WS_URL = new URLSearchParams(window.location.search).get("ws") || "ws://155.248.241.165:8080";
+
 const controls: Controls = {
-    urlInput: document.getElementById("ws-url") as HTMLInputElement,
     nameInput: document.getElementById("player-name") as HTMLInputElement,
     connectBtn: document.getElementById("connect") as HTMLButtonElement,
     status: document.getElementById("status")!,
@@ -92,7 +93,7 @@ function loop(now: number) {
 
 function doConnect() {
     if (isQueueing) return;
-    const url = controls.urlInput.value.trim();
+    const url = DEFAULT_WS_URL;
     const name = controls.nameInput.value.trim() || "Player";
     isQueueing = true;
     controls.connectBtn.disabled = true;
@@ -260,7 +261,6 @@ function updateStatePanel() {
         ["Opponent", `${gameState.opp.x},${gameState.opp.y}`],
         ["Opp HP", String(gameState.opp.hp)],
         ["Opp Items", String(gameState.opp.invCount)],
-        ["Dragon", gameState.dragon ? `${gameState.dragon.hp} HP` : "Hidden"],
     ];
     for (const [k, v] of rows) {
         const d = document.createElement("div");

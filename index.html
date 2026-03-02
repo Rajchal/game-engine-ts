@@ -14,35 +14,18 @@
       <canvas id="map"></canvas>
       <aside class="side-panel">
         <div class="panel-card">
-          <h2>Your Stats</h2>
           <div id="state-grid" class="state-grid"></div>
         </div>
-        <div class="panel-card">
-          <h2>World Map</h2>
-          <canvas id="minimap" width="200" height="200"></canvas>
-        </div>
       </aside>
+      <canvas id="minimap" width="140" height="140"></canvas>
     </div>
 
     <div class="hud">
       <span id="status" class="status">Disconnected</span>
-      <div class="controls">
-        <button data-move="Up">▲</button>
-        <div class="mid-row">
-          <button data-move="Left">◀</button>
-          <button data-action="Attack">⚔</button>
-          <button data-move="Right">▶</button>
-        </div>
-        <button data-move="Down">▼</button>
-      </div>
     </div>
     <div class="overlay" id="connect-overlay">
       <div class="card">
         <h1>Dragon Speedrun</h1>
-        <label>
-          Server URL
-          <input id="ws-url" type="text" value="ws://155.248.241.165:8080" />
-        </label>
         <label>
           Name
           <input id="player-name" type="text" placeholder="Your name" />
