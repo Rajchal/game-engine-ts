@@ -56,6 +56,7 @@ let currentPlayerName = "";
 let queueStartAt: number | null = null;
 let queueTimerId: number | null = null;
 let dragonThemeLoopId: number | null = null;
+const DRAGON_THEME_LOOP_MS = 5600;
 
 bootstrap();
 
@@ -507,82 +508,72 @@ function playDragonSpawnTheme() {
 
         const now = pickupAudioCtx.currentTime + 0.02;
 
-        const drone = pickupAudioCtx.createOscillator();
-        const droneGain = pickupAudioCtx.createGain();
-        drone.type = "sawtooth";
-        drone.frequency.setValueAtTime(55.0, now);
-        drone.frequency.linearRampToValueAtTime(61.74, now + 3.8);
-        droneGain.gain.setValueAtTime(0.0001, now);
-        droneGain.gain.exponentialRampToValueAtTime(0.026, now + 0.35);
-        droneGain.gain.exponentialRampToValueAtTime(0.0001, now + 3.9);
-        drone.connect(droneGain);
-        droneGain.connect(pickupAudioCtx.destination);
-        drone.start(now);
-        drone.stop(now + 3.92);
+        const pad = pickupAudioCtx.createOscillator();
+        const padGain = pickupAudioCtx.createGain();
+        pad.type = "sine";
+        pad.frequency.setValueAtTime(61.74, now);
+        pad.frequency.linearRampToValueAtTime(65.41, now + 5.1);
+        padGain.gain.setValueAtTime(0.0001, now);
+        padGain.gain.exponentialRampToValueAtTime(0.012, now + 0.4);
+        padGain.gain.exponentialRampToValueAtTime(0.0001, now + 5.35);
+        pad.connect(padGain);
+        padGain.connect(pickupAudioCtx.destination);
+        pad.start(now);
+        pad.stop(now + 5.4);
 
-        const bassline = [82.41, 82.41, 92.5, 98.0, 82.41, 73.42, 87.31, 98.0];
-        bassline.forEach((frequency, index) => {
-            const t = now + index * 0.46;
-            const osc = pickupAudioCtx!.createOscillator();
-            const gain = pickupAudioCtx!.createGain();
-            osc.type = "square";
-            osc.frequency.setValueAtTime(frequency, t);
-            gain.gain.setValueAtTime(0.0001, t);
-            gain.gain.exponentialRampToValueAtTime(0.04, t + 0.02);
-            gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.24);
-            osc.connect(gain);
-            gain.connect(pickupAudioCtx!.destination);
-            osc.start(t);
-            osc.stop(t + 0.25);
-        });
-
-        const leadA = [130.81, 146.83, 164.81, 196.0, 220.0, 196.0, 164.81, 246.94];
-        leadA.forEach((frequency, index) => {
-            const t = now + 0.12 + index * 0.23;
-            const osc = pickupAudioCtx!.createOscillator();
-            const gain = pickupAudioCtx!.createGain();
-            osc.type = index % 3 === 0 ? "sawtooth" : "triangle";
-            osc.frequency.setValueAtTime(frequency, t);
-            gain.gain.setValueAtTime(0.0001, t);
-            gain.gain.exponentialRampToValueAtTime(0.055, t + 0.025);
-            gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.19);
-            osc.connect(gain);
-            gain.connect(pickupAudioCtx!.destination);
-            osc.start(t);
-            osc.stop(t + 0.2);
-        });
-
-        const leadB = [196.0, 220.0, 261.63, 293.66, 329.63, 293.66];
-        leadB.forEach((frequency, index) => {
-            const t = now + 2.08 + index * 0.24;
+        const melody = [
+            164.81, 196.0, 220.0, 246.94,
+            261.63, 293.66, 329.63, 293.66,
+            261.63, 246.94, 220.0, 196.0,
+            174.61, 196.0, 220.0, 246.94,
+        ];
+        melody.forEach((frequency, index) => {
+            const t = now + 0.12 + index * 0.33;
             const osc = pickupAudioCtx!.createOscillator();
             const gain = pickupAudioCtx!.createGain();
             osc.type = "triangle";
             osc.frequency.setValueAtTime(frequency, t);
             gain.gain.setValueAtTime(0.0001, t);
-            gain.gain.exponentialRampToValueAtTime(0.062, t + 0.02);
-            gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+            gain.gain.exponentialRampToValueAtTime(0.043, t + 0.03);
+            gain.gain.exponentialRampToValueAtTime(0.018, t + 0.18);
+            gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.34);
             osc.connect(gain);
             gain.connect(pickupAudioCtx!.destination);
             osc.start(t);
-            osc.stop(t + 0.21);
+            osc.stop(t + 0.35);
         });
 
-        const hits = [0.0, 0.92, 1.84, 2.76, 3.45];
-        hits.forEach(offset => {
+        const bassline = [82.41, 73.42, 82.41, 98.0, 87.31, 82.41, 73.42, 82.41];
+        bassline.forEach((frequency, index) => {
+            const t = now + 0.08 + index * 0.66;
+            const osc = pickupAudioCtx!.createOscillator();
+            const gain = pickupAudioCtx!.createGain();
+            osc.type = "sawtooth";
+            osc.frequency.setValueAtTime(frequency, t);
+            gain.gain.setValueAtTime(0.0001, t);
+            gain.gain.exponentialRampToValueAtTime(0.018, t + 0.03);
+            gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.42);
+            osc.connect(gain);
+            gain.connect(pickupAudioCtx!.destination);
+            osc.start(t);
+            osc.stop(t + 0.44);
+        });
+
+        const accents = [1.35, 2.66, 3.96, 5.0];
+        accents.forEach(offset => {
             const t = now + offset;
             const osc = pickupAudioCtx!.createOscillator();
             const gain = pickupAudioCtx!.createGain();
-            osc.type = "square";
-            osc.frequency.setValueAtTime(46.25, t);
-            osc.frequency.exponentialRampToValueAtTime(36.71, t + 0.07);
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(110.0, t);
+            osc.frequency.exponentialRampToValueAtTime(73.42, t + 0.11);
             gain.gain.setValueAtTime(0.0001, t);
-            gain.gain.exponentialRampToValueAtTime(0.07, t + 0.008);
-            gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+            gain.gain.exponentialRampToValueAtTime(0.03, t + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
             osc.connect(gain);
             gain.connect(pickupAudioCtx!.destination);
             osc.start(t);
-            osc.stop(t + 0.1);
+            osc.stop(t + 0.15);
         });
     } catch {
         // Ignore audio errors silently.
@@ -591,15 +582,16 @@ function playDragonSpawnTheme() {
 
 function startDragonThemeLoop() {
     if (dragonThemeLoopId != null) return;
-    playDragonSpawnTheme();
-    dragonThemeLoopId = window.setInterval(() => {
+    const loop = () => {
         playDragonSpawnTheme();
-    }, 4000);
+        dragonThemeLoopId = window.setTimeout(loop, DRAGON_THEME_LOOP_MS);
+    };
+    loop();
 }
 
 function stopDragonThemeLoop() {
     if (dragonThemeLoopId != null) {
-        window.clearInterval(dragonThemeLoopId);
+        window.clearTimeout(dragonThemeLoopId);
         dragonThemeLoopId = null;
     }
 }
